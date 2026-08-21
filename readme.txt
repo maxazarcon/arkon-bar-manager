@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.9.1
+Stable tag: 2.9.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,15 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.9.2 =
+Fix only.
+* On phones, an event with a long title dropped below its flyer while an event
+  with a short one sat beside it, so consecutive rows had different shapes. The
+  phone rules still sized the title as the row's flex child, which it stopped
+  being in 2.9.1 when the title and description were wrapped together. The wrapper
+  is now the sized element, so every row lays out the same way and long titles
+  wrap in place.
 
 = 2.9.1 =
 Fix only.

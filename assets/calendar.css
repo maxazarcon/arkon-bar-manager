@@ -297,9 +297,15 @@
 	.abm-calendar .abm-event-flyer img {
 		width: 92px;
 	}
-	.abm-calendar .abm-event-title {
+	/* The flex child here is the body wrapper, not the title. A content-sized
+	   basis makes a long title push the whole block onto its own row, so one
+	   event sits beside its flyer and the next below it. Zero basis keeps every
+	   row consistent and lets long titles wrap in place. */
+	.abm-calendar .abm-event-body {
 		flex: 1 1 0;
-		min-width: 0; /* let long titles wrap instead of overflowing */
+		min-width: 0;
+	}
+	.abm-calendar .abm-event-title {
 		font-size: 18px;
 	}
 	.abm-calendar .abm-event-meta {
