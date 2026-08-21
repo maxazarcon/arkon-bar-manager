@@ -10,16 +10,24 @@
                        interactive element in the theme
      --abm-card-radius 12px, matching the event cards the old calendar rendered
 
-   The hover treatment is deliberately the site's, not the old calendar's: menu
-   items there fill with the brand pink and their label goes white. The previous
-   calendar did the same move in near-black. Filling in pink keeps the behaviour
-   people liked while dropping a colour that belonged to the old plugin.
+   Two colours, doing different jobs:
 
-   Recolour everything by overriding one property:
+     --abm-accent      the brand pink, for small marks -- the meta icons and text
+                       links. A light touch.
+     --abm-hover-fill  charcoal, for anything that fills a whole button on hover.
+                       Sampled from the live calendar's "View Detail" button,
+                       which inverts to #191919 with white text.
 
-     .abm-calendar { --abm-accent: #d6006e; } */
+   Filling a button with the pink was tried and is too loud at that size; the
+   charcoal is what the live site actually does. Keep the split: pink for marks,
+   charcoal for fills.
+
+   Recolour by overriding either property:
+
+     .abm-calendar { --abm-accent: #d6006e; --abm-hover-fill: #222; } */
 .abm-calendar {
 	--abm-accent: #ff129f;
+	--abm-hover-fill: #191919;
 	--abm-ease: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	--abm-card-radius: 12px;
 	--abm-card-border: #e9e9e9;
@@ -198,12 +206,12 @@
 	transition: background-color var(--abm-ease), color var(--abm-ease), border-color var(--abm-ease);
 }
 
-/* Fills with the brand pink, label goes white — the same move the site's nav
-   makes, and the same shape the old calendar's "View Detail" button had. */
+/* Inverts to charcoal with a white label — exactly what the live calendar's
+   "View Detail" button does. */
 .abm-calendar .abm-event-foot a:hover,
 .abm-calendar .abm-event-foot a:focus-visible {
-	background: var(--abm-accent);
-	border-color: var(--abm-accent);
+	background: var(--abm-hover-fill);
+	border-color: var(--abm-hover-fill);
 	color: #fff;
 }
 
@@ -226,8 +234,8 @@
 }
 .abm-calendar .abm-load-more:hover,
 .abm-calendar .abm-load-more:focus-visible {
-	background: var(--abm-accent);
-	border-color: var(--abm-accent);
+	background: var(--abm-hover-fill);
+	border-color: var(--abm-hover-fill);
 	color: #fff;
 }
 .abm-calendar .abm-load-more[disabled] {

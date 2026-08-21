@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.8.0
+Stable tag: 2.8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -250,6 +250,17 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.8.1 =
+Fix only.
+* Buttons now invert to charcoal on hover, not the brand pink. 2.8.0's stated job
+  was to match the surrounding site, and the site's own calendar inverts its
+  "View Detail" button to #191919 with a white label -- so filling with pink was a
+  misreading of the target, and too loud at button size besides.
+* The two colours now have separate jobs, which is the part worth keeping:
+  --abm-accent (pink) for small marks such as the meta icons and text links, and
+  the new --abm-hover-fill (charcoal) for anything that fills a whole button.
+  Override either.
 
 = 2.8.0 =
 * The calendar list and the event page now use the surrounding site's styling

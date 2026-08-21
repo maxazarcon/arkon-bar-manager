@@ -24,6 +24,7 @@
 	/* Same tokens as the calendar list, sampled from the live site: the brand
 	   pink off the active nav pill, and Cornerstone's own transition curve. */
 	--abm-accent: #ff129f;
+	--abm-hover-fill: #191919;
 	--abm-ease: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	--abm-rule: rgba(128, 128, 128, 0.25);
 	--abm-hero-min: 420px;
@@ -154,8 +155,8 @@
 	margin: 0 0 28px;
 }
 
-/* Matched to the calendar's "View Detail" button and to the site's own hover
-   move: a quiet bordered pill that fills with the brand pink, label going white. */
+/* Matched to the calendar's "View Detail" button: a quiet bordered pill that
+   inverts to charcoal with a white label. */
 .abm-single .abm-export a {
 	display: inline-block;
 	padding: 11px 18px;
@@ -173,8 +174,8 @@
 
 .abm-single .abm-export a:hover,
 .abm-single .abm-export a:focus-visible {
-	background: var(--abm-accent);
-	border-color: var(--abm-accent);
+	background: var(--abm-hover-fill);
+	border-color: var(--abm-hover-fill);
 	color: #fff;
 }
 
