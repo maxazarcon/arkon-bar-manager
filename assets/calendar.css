@@ -1,19 +1,20 @@
 /* Arkon Event Manager — [abm_calendar] frontend list.
 
    Fonts are inherited from the theme so it blends with Cornerstone/Pro. The
-   values below are not invented: they were read off the live site so this list
-   sits alongside the rest of it rather than looking like a bolted-on plugin.
+   default colours are meant to be sampled from the surrounding site rather than
+   invented, so the list sits alongside the rest of it rather than looking like a
+   bolted-on plugin. Override them for your own palette.
 
-     --abm-accent      #ff129f  the brand pink, sampled from the active nav pill
-                                and the "Follow on Instagram" button
+     --abm-accent      the accent colour, for small marks. Sampled from the
+                       surrounding site rather than invented.
      --abm-ease        Cornerstone's own transition curve, used on every
                        interactive element in the theme
      --abm-card-radius 12px, matching the event cards the old calendar rendered
 
    Two colours, doing different jobs:
 
-     --abm-accent      the brand pink, for small marks -- the meta icons and text
-                       links. A light touch.
+     --abm-accent      the accent colour, for small marks -- the meta icons and
+                       text links. A light touch.
      --abm-hover-fill  charcoal, for anything that fills a whole button on hover.
                        Sampled from the live calendar's "View Detail" button,
                        which inverts to #191919 with white text.

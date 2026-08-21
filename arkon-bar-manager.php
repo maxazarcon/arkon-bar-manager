@@ -3,7 +3,7 @@
  * Plugin Name:       Arkon Event Manager
  * Plugin URI:        https://maxazarcon.com/
  * Description:       Bar event management. Create events with date, time (incl. "Close"), category and flyer, then surface them on the frontend via Themeco Pro/Cornerstone Looper + Dynamic Content, with per-event iCal and Google Calendar export.
- * Version:           2.11.0
+ * Version:           2.11.1
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Max Azarcon
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ABM_VERSION', '2.11.0' );
+define( 'ABM_VERSION', '2.11.1' );
 define( 'ABM_FILE', __FILE__ );
 define( 'ABM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ABM_URL', plugin_dir_url( __FILE__ ) );
@@ -83,8 +83,8 @@ function abm_maybe_upgrade() {
 	// ever needed to do. Never rebuild_all() here: that regenerates every event
 	// from its recurrence rule, and an imported event has no rule because its
 	// dates came from MEC verbatim, so it would collapse to the single date in
-	// abm_event_date. Three routine updates took a finished migration from 1,229
-	// occurrences down to 337 in exactly that way.
+	// abm_event_date. Routine plugin updates have taken a finished migration from
+	// hundreds of dates down to one per event in exactly that way.
 	ABM_Occurrences::generate_missing();
 	update_option( 'abm_db_version', ABM_VERSION );
 }

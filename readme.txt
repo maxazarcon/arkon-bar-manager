@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.11.0
+Stable tag: 2.11.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -253,6 +253,14 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
 
+= 2.11.1 =
+Documentation only; no behaviour change.
+* The changelog and the source comments described the specific site this plugin
+  was first built for -- its event titles, its referrer mix, its migration
+  counts. Now that the changelog is rendered inside the plugin and the plugin may
+  be distributed, all of that has been generalised. The engineering detail is
+  unchanged; only the identifying specifics are gone.
+
 = 2.11.0 =
 * New Changelog screen under Event Manager, alongside Settings and Migrate &
   Tools. It renders this file's changelog section rather than keeping a second
@@ -276,9 +284,9 @@ Fix only.
 = 2.10.2 =
 Fix only.
 * "Add to Google Calendar" sent Google a title and description with every space
-  and most punctuation removed: "Ascension featuring Kailah Newcity" arrived as
-  "AscensionfeaturingKailahNewcity", and "Doors at 2:00pm, music at 3:00pm"
-  as "Doorsat200pmmusicat300pm".
+  and most punctuation removed, so an event titled "Live Band Tonight" arrived
+  as "LiveBandTonight" and a description reading "Doors at 8:00pm, music at
+  9:00pm" as "Doorsat800pmmusicat900pm".
   abm_gcal, abm_ical and abm_flyer_url are URLs but were registered with
   sanitize_text_field as their sanitize callback. That function contains a loop
   which deletes every percent-encoded sequence it finds -- correct for prose,
@@ -349,8 +357,8 @@ Fix only.
 * Event descriptions now appear in the calendar list, under the title, as a short
   blurb clamped to two lines so one long description cannot make a row tower over
   its neighbours. It uses the excerpt when there is one and trims the content
-  otherwise. Only a minority of events carry a description -- 15 of the 337 in the
-  reference migration -- so most rows are unchanged.
+  otherwise. Typically only a minority of events carry a description, so most
+  rows are unchanged.
 * The description on the event page is now set as a readable paragraph with a
   capped measure, rather than an unstyled block.
 * Event titles in the list are charcoal at rest and pink on hover. They previously
@@ -380,8 +388,8 @@ Fix only.
 * The calendar list and the event page now use the surrounding site's styling
   rather than the plugin's own. The values were read off the live site, not
   invented: the accent is the brand pink #ff129f, sampled from the active nav
-  pill and the "Follow on Instagram" button, and transitions use Cornerstone's
-  own curve, 0.3s cubic-bezier(0.4, 0, 0.2, 1).
+  navigation and call-to-action buttons, and transitions use Cornerstone's own
+  curve, 0.3s cubic-bezier(0.4, 0, 0.2, 1).
 * "View Detail" is a real button again -- a quiet bordered pill that fills with
   the brand pink and turns its label white on hover. That is the same move the
   site's own navigation makes, and the same shape the previous calendar used, in
@@ -429,10 +437,9 @@ Fix only.
 **Superseded by 2.7.1 on the same day; see the note at the end of this entry.**
 
 * Single event pages now render. A theme with no layout for this post type falls
-  back to a generic one; on Themeco Pro that produced the page shell and nothing
-  else -- no title, no date, no flyer, no description. Measured on staging: 613
-  visible characters, all header and footer chrome, and the event title absent
-  from the DOM entirely. This matters more than it sounds, because
+  back to a generic one, which on some themes produces the page shell and nothing
+  else -- no title, no date, no flyer, no description, and the event title absent
+  from the markup entirely. This matters more than it sounds, because
   /event-archive/<slug>/ redirects land on exactly these pages.
   The plugin now supplies templates/single-abm_event.php showing the flyer, the
   date of the occurrence being viewed, the time range, category, cover,
@@ -451,12 +458,12 @@ Fix only.
 
 = 2.6.1 =
 * The "Rebuild occurrences" notice no longer reads as a data-loss report. On a
-  site with 337 imported events it said "3 imported events kept their original
-  dates", which invites the conclusion that 334 lost theirs. Only an event
-  holding more than one date needs protecting -- a single-date event
-  regenerates to the same date -- so 3 was both correct and alarming. The
-  notice now explains what the number counts and points at the stored total as
-  the check. Verified against the real 337-event migration on staging.
+  site with hundreds of imported events it might say "3 imported events kept
+  their original dates", which invites the conclusion that the rest lost theirs.
+  Only an event holding more than one date needs protecting -- a single-date
+  event regenerates to the same date -- so a low number is both correct and
+  alarming. The notice now explains what the number counts and points at the
+  stored total as the check.
 
 = 2.6.0 =
 * REST: events carry a read-only abm_occurrences object ({count, next, locked}).
@@ -538,7 +545,7 @@ Fixes only.
 
 = 2.1.0 =
 * MEC database import runs in resumable batches of 20 with a progress bar. The
-  single-request import wrote all 337 events correctly but never returned a
+  single-request import wrote every event correctly but never returned a
   response, which is indistinguishable from a dead import.
 * "End time is approximate" now defaults off. Defaulting it on truncated a
   genuine 8 PM - 1 AM export at 11:59 PM.

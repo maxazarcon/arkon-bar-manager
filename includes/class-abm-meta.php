@@ -86,8 +86,8 @@ class ABM_Meta {
 		// deletes every percent-encoded sequence it finds (see _sanitize_text_fields()
 		// in wp-includes/formatting.php), which is correct for prose and destructive
 		// for a URL. abm_gcal carries an encoded query string, so registering it as a
-		// text field stripped every %20, %3A and %2C on save: "Ascension featuring
-		// Kailah Newcity" reached Google as "AscensionfeaturingKailahNewcity".
+		// text field stripped every %20, %3A and %2C on save, so an event titled
+		// "Live Band Tonight" reached Google as "LiveBandTonight".
 		//
 		// The closure takes one argument on purpose. register_post_meta() passes
 		// ( $value, $meta_key, $object_type ), and esc_url_raw()'s second parameter is

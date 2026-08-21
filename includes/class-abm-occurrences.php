@@ -317,7 +317,7 @@ class ABM_Occurrences {
 		// one row — the single value in abm_event_date — silently destroying
 		// hundreds of real dates. This ran on every plugin update via
 		// abm_maybe_upgrade() -> rebuild_all() and collapsed a finished migration
-		// from 1,229 occurrences to 337.
+		// from hundreds of dates down to one per event.
 		//
 		// Only multi-date sets are protected: a single-date imported event
 		// regenerates to the same single row, so letting it through keeps date

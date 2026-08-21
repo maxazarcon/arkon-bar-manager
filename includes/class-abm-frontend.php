@@ -134,11 +134,11 @@ class ABM_Frontend {
 	 * Whether this plugin should supply the single-event template.
 	 *
 	 * A theme does not know this post type exists, so with no template of its
-	 * own it falls back to a generic layout. On the Themeco Pro install this was
-	 * built for, that fallback rendered the page shell and nothing else -- no
-	 * title, no date, no flyer. Since /event-archive/<slug>/ redirects to these
-	 * URLs and Instagram is the largest referrer, the most valuable inbound link
-	 * on the site landed on a blank page.
+	 * own it falls back to a generic layout. On some themes that fallback renders
+	 * the page shell and nothing else -- no title, no date, no flyer. Since
+	 * /event-archive/<slug>/ redirects to these URLs, and inbound social links
+	 * point at them, the most valuable inbound link on a site can land on a blank
+	 * page.
 	 *
 	 * Precedence, most specific first:
 	 *   1. A theme's own single-abm_event.php.

@@ -333,8 +333,8 @@ class ABM_MEC_DB {
 	 * Start/end times for a MEC event, from its post meta.
 	 *
 	 * MEC stores these as separate hour / minute / am-pm keys. When the event is
-	 * flagged to hide its end time (the convention used at Slim's for anything
-	 * running past midnight) the end is deliberately returned empty so the
+	 * flagged to hide its end time (a common convention for anything running past
+	 * midnight) the end is deliberately returned empty so the
 	 * calendar renders a start time only, exactly as the live site does.
 	 *
 	 * @param int $mec_post_id MEC post ID.

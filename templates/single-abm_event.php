@@ -3,11 +3,10 @@
  * Single event template.
  *
  * Themes do not know about this post type, so without a template of their own
- * they fall back to a generic layout. On the Themeco Pro install this plugin was
- * built for, that fallback rendered the page shell and nothing else: no title,
- * no date, no flyer, no content. Since /event-archive/<slug>/ 301s here and
- * Instagram is the site's largest referrer, that made the highest-value inbound
- * link land on an empty page.
+ * they fall back to a generic layout. On some themes that fallback renders the
+ * page shell and nothing else: no title, no date, no flyer, no content. Since
+ * /event-archive/<slug>/ 301s here and inbound social links point at these URLs,
+ * the highest-value inbound link on a site can land on an empty page.
  *
  * This template is therefore a floor, not a design. It renders what the old
  * calendar's detail page rendered, using the plugin's own data, and it steps

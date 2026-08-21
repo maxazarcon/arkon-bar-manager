@@ -1,0 +1,6 @@
+# Keep repository metadata out of release archives built with `git archive`.
+.gitignore      export-ignore
+.gitattributes  export-ignore
+
+# Normalise line endings; this tree is LF throughout.
+* text=auto eol=lf

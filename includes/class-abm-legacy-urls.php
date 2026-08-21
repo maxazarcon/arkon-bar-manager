@@ -4,8 +4,9 @@
  *
  * Events previously lived at /event-archive/<slug>/ under Modern Events
  * Calendar and now live under the plugin's own rewrite base. Those old URLs are
- * scattered across Instagram posts and bios that nobody can edit, and Instagram
- * is the site's single largest referrer, so they have to keep resolving.
+ * scattered across social posts and bios that nobody can edit, and social links
+ * are often a venue site's single largest referrer, so they have to keep
+ * resolving.
  *
  * The map is derived from stored meta rather than hand-maintained: the importer
  * records each event's original slug, so the lookup stays correct as events are
