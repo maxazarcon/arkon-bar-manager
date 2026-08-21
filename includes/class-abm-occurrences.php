@@ -44,6 +44,14 @@ class ABM_Occurrences {
 
 	const CRON_HOOK = 'abm_extend_occurrences';
 
+	/**
+	 * Marks an event whose dates were written verbatim rather than derived from
+	 * a rule — an import, essentially. Such an event has no recurrence rule to
+	 * regenerate from, so regenerating it would collapse every date it has down
+	 * to the single value in abm_event_date.
+	 */
+	const EXPLICIT_META = 'abm_occurrences_explicit';
+
 	public static function instance() {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -296,12 +304,33 @@ class ABM_Occurrences {
 	 * @param int $post_id Event ID.
 	 * @return int Rows written.
 	 */
-	public static function generate_for_post( $post_id ) {
+	public static function generate_for_post( $post_id, $force = false ) {
 		global $wpdb;
 
 		$post_id = (int) $post_id;
+
+		// Protect imported dates.
+		//
+		// An event whose occurrences were written verbatim (by the MEC importer)
+		// has no recurrence rule, because its dates came from the source system
+		// rather than from a pattern. Regenerating it therefore produces exactly
+		// one row — the single value in abm_event_date — silently destroying
+		// hundreds of real dates. This ran on every plugin update via
+		// abm_maybe_upgrade() -> rebuild_all() and collapsed a finished migration
+		// from 1,229 occurrences to 337.
+		//
+		// Only multi-date sets are protected: a single-date imported event
+		// regenerates to the same single row, so letting it through keeps date
+		// edits working normally for the common case.
+		if ( ! $force && self::is_protected_explicit( $post_id ) ) {
+			return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM " . self::table() . " WHERE post_id = %d", $post_id ) ); // phpcs:ignore
+		}
+
 		self::delete_for_post( $post_id );
 		self::flush_cache( $post_id );
+
+		// A rule now governs this event, so it is no longer verbatim.
+		delete_post_meta( $post_id, self::EXPLICIT_META );
 
 		$date = abm_sanitize_date( get_post_meta( $post_id, 'abm_event_date', true ) );
 		if ( '' === $date ) {
@@ -338,6 +367,33 @@ class ABM_Occurrences {
 		}
 
 		return $written;
+	}
+
+	/**
+	 * Whether this event's rows must not be regenerated from a rule.
+	 *
+	 * True when the rows were written verbatim, there is no rule to rebuild
+	 * from, and there is more than one of them to lose.
+	 *
+	 * @param int $post_id Event ID.
+	 * @return bool
+	 */
+	public static function is_protected_explicit( $post_id ) {
+		if ( ! get_post_meta( $post_id, self::EXPLICIT_META, true ) ) {
+			return false;
+		}
+
+		$rule = self::get_rule( $post_id );
+		if ( '' !== $rule['type'] ) {
+			return false; // A rule was set; it takes precedence.
+		}
+
+		global $wpdb;
+		$table = self::table();
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = (array) $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$table} WHERE post_id = %d LIMIT 2", (int) $post_id ) );
+
+		return count( $rows ) > 1;
 	}
 
 	/**
@@ -509,9 +565,48 @@ class ABM_Occurrences {
 			)
 		);
 
+		$rows      = 0;
+		$protected = 0;
+		foreach ( $ids as $id ) {
+			if ( self::is_protected_explicit( $id ) ) {
+				$protected++;
+			}
+			$rows += self::generate_for_post( $id );
+		}
+
+		return array(
+			'events'    => count( $ids ),
+			'rows'      => $rows,
+			'protected' => $protected,
+		);
+	}
+
+	/**
+	 * Materialize only events that have no occurrence rows at all.
+	 *
+	 * This is what an upgrade should do: give rows to anything that predates the
+	 * occurrence table, and touch nothing that already has them.
+	 *
+	 * @return array{events:int,rows:int}
+	 */
+	public static function generate_missing() {
+		global $wpdb;
+		$table = self::table();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$ids = (array) $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT p.ID FROM {$wpdb->posts} p
+				 LEFT JOIN {$table} o ON o.post_id = p.ID
+				 WHERE p.post_type = %s AND o.id IS NULL
+				 GROUP BY p.ID",
+				ABM_POST_TYPE
+			)
+		);
+
 		$rows = 0;
 		foreach ( $ids as $id ) {
-			$rows += self::generate_for_post( $id );
+			$rows += self::generate_for_post( (int) $id );
 		}
 
 		return array(
@@ -535,6 +630,9 @@ class ABM_Occurrences {
 		$post_id = (int) $post_id;
 		self::delete_for_post( $post_id );
 		self::flush_cache( $post_id );
+
+		// Mark these rows as verbatim so a later rebuild cannot flatten them.
+		update_post_meta( $post_id, self::EXPLICIT_META, 1 );
 
 		$seen   = array();
 		$values = array();

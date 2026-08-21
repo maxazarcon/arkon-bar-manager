@@ -39,3 +39,13 @@
 	padding-top: 10px;
 	color: #50575e;
 }
+
+/* Repeat marker in the events list "When" column. */
+.abm-repeats {
+	display: inline-block;
+	margin-left: 4px;
+	color: #787c82;
+	font-size: 14px;
+	line-height: 1;
+	cursor: help;
+}

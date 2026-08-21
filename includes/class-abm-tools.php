@@ -112,10 +112,11 @@ class ABM_Tools {
 				<div class="notice notice-success"><p>
 					<?php
 					printf(
-						/* translators: 1: event count, 2: occurrence row count. */
-						esc_html__( 'Rebuilt occurrences for %1$s events, producing %2$s dates.', 'arkon-bar-manager' ),
+						/* translators: 1: event count, 2: occurrence row count, 3: protected count. */
+						esc_html__( 'Rebuilt occurrences for %1$s events, producing %2$s dates. %3$s imported events kept their original dates.', 'arkon-bar-manager' ),
 						'<strong>' . esc_html( number_format_i18n( $rebuilt['events'] ) ) . '</strong>',
-						'<strong>' . esc_html( number_format_i18n( $rebuilt['rows'] ) ) . '</strong>'
+						'<strong>' . esc_html( number_format_i18n( $rebuilt['rows'] ) ) . '</strong>',
+						'<strong>' . esc_html( number_format_i18n( $rebuilt['protected'] ?? 0 ) ) . '</strong>'
 					);
 					?>
 				</p></div>

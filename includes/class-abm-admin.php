@@ -267,8 +267,21 @@ class ABM_Admin {
 				break;
 
 			case 'abm_when':
-				$display = get_post_meta( $post_id, 'abm_date_display', true );
-				echo $display ? esc_html( $display ) : '&mdash;';
+				// The next date this actually happens, not abm_date_display —
+				// that is the series *start*, so a weekly night running since
+				// 2019 would show 2019 here for ever.
+				$next = ABM_Occurrences::next_date( $post_id );
+				if ( $next ) {
+					echo esc_html( abm_format_date( $next ) );
+					if ( ABM_Occurrences::is_recurring( $post_id ) ) {
+						echo ' <span class="abm-repeats" title="' . esc_attr__( 'Repeats', 'arkon-bar-manager' ) . '">&#8635;</span>';
+					}
+				} else {
+					$display = get_post_meta( $post_id, 'abm_date_display', true );
+					// No upcoming date: show the last one it had, so a finished
+					// event still reads sensibly instead of as a dash.
+					echo $display ? '<span style="color:#888">' . esc_html( $display ) . '</span>' : '&mdash;';
+				}
 				break;
 
 			case 'abm_time':
@@ -318,26 +331,91 @@ class ABM_Admin {
 			return;
 		}
 
-		// Default sort: by event date (unless the user clicked a sortable column).
-		if ( ! $query->get( 'orderby' ) ) {
-			$query->set( 'meta_key', 'abm_event_date' );
-			$query->set( 'orderby', 'meta_value' );
+		// Everything below sorts and filters on the occurrence table rather than
+		// the abm_event_date meta. That meta is the series *start*, so a weekly
+		// night that began in 2019 sorts to the very top for ever and lands under
+		// "Past" even though it runs this Monday — on the screen used to manage
+		// events daily, which makes it the worst place for that bug to live.
+		$when = isset( $_GET['abm_when'] ) ? sanitize_key( wp_unslash( $_GET['abm_when'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! in_array( $when, array( 'upcoming', 'past' ), true ) ) {
+			$when = '';
+		}
+
+		$query->set( 'abm_admin_when', $when );
+
+		// Leave an explicit column sort alone; only own the default ordering.
+		$owns_order = ! $query->get( 'orderby' ) || 'abm_event_date' === $query->get( 'orderby' );
+		$query->set( 'abm_admin_order_by_next', $owns_order );
+
+		// WP_Query defaults `order` to DESC. For a list of events the useful
+		// default is soonest-first, so force ASC unless the user actually clicked
+		// a column header to choose a direction.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( $owns_order && ! isset( $_GET['order'] ) ) {
 			$query->set( 'order', 'ASC' );
 		}
 
-		$when = isset( $_GET['abm_when'] ) ? sanitize_key( wp_unslash( $_GET['abm_when'] ) ) : '';
-		if ( 'upcoming' === $when || 'past' === $when ) {
-			$today   = current_time( 'Y-m-d' );
-			$compare = ( 'upcoming' === $when ) ? '>=' : '<';
-			$meta_query   = (array) $query->get( 'meta_query' );
-			$meta_query[] = array(
-				'key'     => 'abm_event_date',
-				'value'   => $today,
-				'compare' => $compare,
-				'type'    => 'DATE',
-			);
-			$query->set( 'meta_query', $meta_query );
+		if ( '' !== $when || $query->get( 'abm_admin_order_by_next' ) ) {
+			add_filter( 'posts_clauses', array( $this, 'admin_query_clauses' ), 10, 2 );
 		}
+	}
+
+	/**
+	 * Join the occurrence table for the events list screen.
+	 *
+	 * "Upcoming" means the event has at least one date still to come.
+	 * "Past" means it has none — which is the only definition that makes sense
+	 * for something that repeats.
+	 *
+	 * @param array    $clauses Query clauses.
+	 * @param WP_Query $query   Query.
+	 * @return array
+	 */
+	public function admin_query_clauses( $clauses, $query ) {
+		if ( ! $query->get( 'abm_admin_when' ) && ! $query->get( 'abm_admin_order_by_next' ) ) {
+			return $clauses;
+		}
+
+		// One query, one application.
+		remove_filter( 'posts_clauses', array( $this, 'admin_query_clauses' ), 10 );
+
+		global $wpdb;
+		$occ   = ABM_Occurrences::table();
+		$today = current_time( 'Y-m-d' );
+		$when  = (string) $query->get( 'abm_admin_when' );
+
+		$sub = $wpdb->prepare(
+			"( SELECT post_id, MIN(occur_date) AS abm_next_date FROM {$occ}
+			   WHERE occur_date >= %s GROUP BY post_id )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$today
+		);
+
+		if ( 'past' === $when ) {
+			// No upcoming occurrence at all.
+			$clauses['join']  .= " LEFT JOIN {$sub} abm_next ON abm_next.post_id = {$wpdb->posts}.ID ";
+			$clauses['where'] .= ' AND abm_next.post_id IS NULL ';
+			if ( $query->get( 'abm_admin_order_by_next' ) ) {
+				// Most recently finished first.
+				$clauses['orderby'] = "{$wpdb->posts}.post_date DESC";
+			}
+			return $clauses;
+		}
+
+		if ( 'upcoming' === $when ) {
+			$clauses['join'] .= " INNER JOIN {$sub} abm_next ON abm_next.post_id = {$wpdb->posts}.ID ";
+		} else {
+			// "All": still order by next date, but do not hide finished events.
+			$clauses['join'] .= " LEFT JOIN {$sub} abm_next ON abm_next.post_id = {$wpdb->posts}.ID ";
+		}
+
+		if ( $query->get( 'abm_admin_order_by_next' ) ) {
+			$order = ( 'DESC' === strtoupper( (string) $query->get( 'order' ) ) ) ? 'DESC' : 'ASC';
+			// Finished events sort last under "All" rather than first, which is
+			// what a NULL next_date would otherwise do on an ASC sort.
+			$clauses['orderby'] = "abm_next.abm_next_date IS NULL ASC, abm_next.abm_next_date {$order}, {$wpdb->posts}.ID ASC";
+		}
+
+		return $clauses;
 	}
 
 	/* --------------------------------------------------------------------- */
