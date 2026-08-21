@@ -1,9 +1,9 @@
 === Arkon Event Manager ===
 Contributors: arkon
 Requires at least: 6.4
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.12.0
+Stable tag: 2.12.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -261,10 +261,39 @@ unpacks to the correct folder name, so WordPress updates the plugin in place.
   scheduled task that extends it. Events, their meta and the categories are
   preserved; delete them in the admin first if you want them gone.
 
+== Upgrade Notice ==
+
+= 2.12.0 =
+The plugin now updates itself from its GitHub releases. Set ABM_GITHUB_REPO and
+the Update URI header to your repository before relying on it.
+
+= 2.10.2 =
+Fixes "Add to Google Calendar" sending mangled text. Every event's link was
+affected; they repair themselves on upgrade.
+
+= 2.7.2 =
+Fixes the site navigation becoming unreadable when scrolling an event page.
+
+= 2.4.1 =
+Stops a plugin update from rebuilding every event's dates. Recommended for any
+site that has imported events from another calendar.
+
 == Changelog ==
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.12.1 =
+Fixes and housekeeping; no new surface.
+* Venue name and address are joined with a comma rather than a space in calendar
+  exports. "The Venue, 1 Example St" geocodes; "The Venue 1 Example St" is a
+  guess. Both settings feed one field in a calendar app, and either may be empty.
+  The join is now a single helper used by both the iCal and Google Calendar
+  paths, which previously repeated the same expression.
+* "Tested up to" raised to 7.1, which is where the plugin is actually exercised.
+  It had been left at 6.8, which makes WordPress warn that a plugin is untested
+  and possibly abandoned.
+* Added upgrade notices for the releases worth reading before updating.
 
 = 2.12.0 =
 * The plugin updates itself from its GitHub releases. New releases appear on the

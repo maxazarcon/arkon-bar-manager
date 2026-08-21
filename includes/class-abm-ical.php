@@ -41,7 +41,7 @@ class ABM_ICal {
 		$dtstamp   = gmdate( 'Ymd\THis\Z' );
 
 		$summary  = self::escape( get_the_title( $post_id ) );
-		$location = self::escape( trim( abm_get_setting( 'venue_name', '' ) . ' ' . abm_get_setting( 'venue_address', '' ) ) );
+		$location = self::escape( abm_venue_location() );
 
 		$desc = wp_strip_all_tags( (string) $post->post_excerpt );
 		if ( '' === $desc ) {

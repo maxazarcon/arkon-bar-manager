@@ -264,6 +264,30 @@ function abm_event_clamp_enabled( $post_id ) {
 }
 
 /**
+ * The venue location for calendar exports, or '' when unset.
+ *
+ * Name and address are separate settings but one field to a calendar app, so
+ * they are joined with a comma rather than a space: "The Venue, 1 Example St"
+ * geocodes, "The Venue 1 Example St" is a guess. Either part may be empty.
+ *
+ * @return string
+ */
+function abm_venue_location() {
+	$parts = array_filter(
+		array_map(
+			'trim',
+			array(
+				(string) abm_get_setting( 'venue_name', '' ),
+				(string) abm_get_setting( 'venue_address', '' ),
+			)
+		),
+		'strlen'
+	);
+
+	return implode( ', ', $parts );
+}
+
+/**
  * The per-event iCal download URL (uses the /ical/ permalink endpoint).
  *
  * @param int $post_id Event ID.
@@ -315,7 +339,7 @@ function abm_build_gcal_url( $post_id, $ymd, $start, $end ) {
 		$details = '' !== $details ? $details . ' ' . $line : $line;
 	}
 
-	$location = trim( abm_get_setting( 'venue_name', '' ) . ' ' . abm_get_setting( 'venue_address', '' ) );
+	$location = abm_venue_location();
 
 	$params = array(
 		'action'   => 'TEMPLATE',
