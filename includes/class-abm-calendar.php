@@ -299,6 +299,13 @@ class ABM_Calendar {
 		$time_d = abm_format_time_range( $row->start_time, $row->end_time );
 		$cost_d = get_post_meta( $post_id, 'abm_cost_display', true );
 
+		// Short description. Only 15 of the 337 imported events carry one, so this is
+		// absent from most rows by design rather than by omission.
+		$blurb = trim( (string) get_post_field( 'post_excerpt', $post_id ) );
+		if ( '' === $blurb ) {
+			$blurb = wp_trim_words( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ), 26, '&hellip;' );
+		}
+
 		$cats = '';
 		if ( abm_show_category_for( $post_id ) ) {
 			$terms = get_the_terms( $post_id, ABM_TAXONOMY );
@@ -315,6 +322,9 @@ class ABM_Calendar {
 					</a>
 				<?php endif; ?>
 				<div class="abm-event-title"><a href="<?php echo esc_url( $link ); ?>"><?php echo esc_html( $title ); ?></a></div>
+				<?php if ( $blurb ) : ?>
+					<p class="abm-event-blurb"><?php echo esc_html( $blurb ); ?></p>
+				<?php endif; ?>
 				<div class="abm-event-meta">
 					<?php if ( $date_d ) : ?>
 						<span class="abm-meta-row abm-meta-date"><?php echo self::icon( 'calendar' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?><span><?php echo esc_html( $date_d ); ?></span></span>

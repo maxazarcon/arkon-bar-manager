@@ -28,6 +28,9 @@
 .abm-calendar {
 	--abm-accent: #ff129f;
 	--abm-hover-fill: #191919;
+	/* Title ink, sampled from the live calendar's event headings. */
+	--abm-ink: #171c24;
+	--abm-muted: #5f6570;
 	--abm-ease: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	--abm-card-radius: 12px;
 	--abm-card-border: #e9e9e9;
@@ -154,11 +157,30 @@
 	overflow-wrap: break-word;
 }
 .abm-calendar .abm-event-title a {
-	color: inherit;
+	/* Charcoal at rest, pink on hover — not inherited, because the theme's own
+	   link colour is a red that fights the rest of this list. */
+	color: var(--abm-ink);
 	text-decoration: none;
+	transition: color var(--abm-ease);
 }
-.abm-calendar .abm-event-title a:hover {
+.abm-calendar .abm-event-title a:hover,
+.abm-calendar .abm-event-title a:focus-visible {
 	color: var(--abm-accent);
+}
+
+/* Short description. Present on a minority of events, so it must look
+   deliberate when it appears and leave no gap when it doesn't. Clamped to two
+   lines so one long blurb cannot make a row tower over its neighbours. */
+.abm-calendar .abm-event-blurb {
+	margin: 8px 0 0;
+	color: var(--abm-muted);
+	font-size: 14px;
+	line-height: 1.55;
+	max-width: 62ch;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
 }
 
 /* Meta column */

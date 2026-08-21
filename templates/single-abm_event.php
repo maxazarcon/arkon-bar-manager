@@ -167,8 +167,16 @@ while ( have_posts() ) :
 			<?php endif; ?>
 
 			<p class="abm-single-back">
+				<?php
+				/*
+				 * Shaped after the site's own "Learn More" button: uppercase,
+				 * letter-spaced, with a chevron that carries the motion. The
+				 * chevron is a pseudo-element in CSS rather than markup, so it
+				 * cannot be read out as text by a screen reader.
+				 */
+				?>
 				<a href="<?php echo esc_url( ABM_Legacy_URLs::calendar_url() ); ?>">
-					<?php esc_html_e( '&larr; All events', 'arkon-bar-manager' ); ?>
+					<?php esc_html_e( 'All events', 'arkon-bar-manager' ); ?>
 				</a>
 			</p>
 			</div><!-- .abm-single-inner -->

@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.8.1
+Stable tag: 2.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -208,8 +208,10 @@ for, so listing events with _fields that omit it is free.
 
 [abm_calendar]
 
-Outputs a month-grouped list of upcoming events (flyer, title, date, time,
-category, cost) with a "Load More" button that pulls the next batch over AJAX.
+Outputs a month-grouped list of upcoming events (flyer, title, short description,
+date, time, category, cost) with a "Load More" button that pulls the next batch
+over AJAX. The description is the event's excerpt, or its trimmed content when no
+excerpt is set, and is omitted entirely for events that have neither.
 The number loaded initially and per Load More click are set under Settings >
 Calendar Shortcode, and can be overridden per placement:
 
@@ -250,6 +252,26 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.9.0 =
+* Event descriptions now appear in the calendar list, under the title, as a short
+  blurb clamped to two lines so one long description cannot make a row tower over
+  its neighbours. It uses the excerpt when there is one and trims the content
+  otherwise. Only a minority of events carry a description -- 15 of the 337 in the
+  reference migration -- so most rows are unchanged.
+* The description on the event page is now set as a readable paragraph with a
+  capped measure, rather than an unstyled block.
+* Event titles in the list are charcoal at rest and pink on hover. They previously
+  inherited the theme's link colour, which on this site is a red that fought
+  everything around it.
+* The event page's "All events" link is now the site's own text-button form:
+  uppercase, letter-spaced, with a chevron that slides on hover over 300ms on the
+  same easing the theme's buttons use. Honours prefers-reduced-motion.
+* The event page title uses the script face the theme uses for its other hero
+  titles, sized with clamp() so it scales fluidly instead of needing a breakpoint
+  set to maintain. Override with --abm-hero-font.
+* "Also coming up" dates no longer inherit the theme's red link colour either.
+* New CSS custom properties: --abm-ink, --abm-muted, --abm-hero-font.
 
 = 2.8.1 =
 Fix only.

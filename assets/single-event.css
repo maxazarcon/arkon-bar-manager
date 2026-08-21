@@ -29,6 +29,10 @@
 	--abm-rule: rgba(128, 128, 128, 0.25);
 	--abm-hero-min: 420px;
 	--abm-hero-ink: #fff;
+	--abm-ink: #171c24;
+	--abm-muted: #5f6570;
+	/* The script face the theme uses for every other hero title. */
+	--abm-hero-font: ScriptMT, "Script MT", "Brush Script MT", cursive, serif;
 }
 
 /* Hero band ------------------------------------------------------------- */
@@ -62,8 +66,15 @@
 	width: 100%;
 }
 
+/* Matches the other hero titles on the site, which are ScriptMT at 70px on a
+   desktop viewport. Sized with clamp() rather than a fixed value plus
+   breakpoints: the theme scales its own type fluidly (its buttons use
+   calc(0.75em + 1vmin)), and a fluid rule needs no breakpoint set to maintain. */
 .abm-single-title {
 	margin: 0;
+	font-family: var(--abm-hero-font);
+	font-weight: 400;
+	font-size: clamp(2.4rem, 1.2rem + 4vw, 4.375rem);
 	line-height: 1.12;
 	color: var(--abm-hero-ink);
 }
@@ -207,33 +218,99 @@
 	margin: 0;
 }
 
+.abm-single-upcoming li a {
+	color: var(--abm-ink);
+	text-decoration: none;
+	transition: color var(--abm-ease);
+}
+
+.abm-single-upcoming li a:hover,
+.abm-single-upcoming li a:focus-visible {
+	color: var(--abm-accent);
+}
+
 .abm-single-upcoming-time {
-	opacity: 0.7;
+	color: var(--abm-muted);
 	font-size: 0.9rem;
 }
 
 /* Content and footer ---------------------------------------------------- */
 
+/* The event description. Short in practice — a lineup, a door time — so it is
+   set as a readable paragraph rather than boxed and labelled the way the old
+   calendar did it. Measure capped so it stays comfortable on a wide screen. */
 .abm-single-content {
 	margin: 36px 0 0;
 	padding-top: 28px;
 	border-top: 1px solid var(--abm-rule);
+	max-width: 68ch;
+	color: var(--abm-ink);
+	font-size: 1.05rem;
+	line-height: 1.7;
+}
+
+.abm-single-content > :first-child {
+	margin-top: 0;
+}
+
+.abm-single-content > :last-child {
+	margin-bottom: 0;
+}
+
+.abm-single-content p {
+	margin: 0 0 1em;
+}
+
+.abm-single-content a {
+	color: var(--abm-accent);
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
 }
 
 .abm-single-back {
 	margin: 40px 0 0;
 }
 
+/* "All events" — the site's own text-button form: uppercase, letter-spaced,
+   charcoal, with a chevron doing the moving. The theme's Learn More button pairs
+   a base and hover icon and animates over 300ms on Material Standard easing;
+   this reproduces the feel with one glyph that slides. */
 .abm-single-back a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5em;
+	color: var(--abm-ink);
 	text-decoration: none;
-	font-size: 0.95rem;
+	font-size: 0.85rem;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
 	transition: color var(--abm-ease);
+}
+
+/* Chevron as a pseudo-element: decorative, so it stays out of the accessibility
+   tree instead of being announced as a stray character. */
+.abm-single-back a::before {
+	content: "\2039";
+	font-size: 1.35em;
+	line-height: 1;
+	transition: transform var(--abm-ease);
 }
 
 .abm-single-back a:hover,
 .abm-single-back a:focus-visible {
 	color: var(--abm-accent);
-	text-decoration: underline;
+}
+
+.abm-single-back a:hover::before,
+.abm-single-back a:focus-visible::before {
+	transform: translateX(-0.28em);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.abm-single-back a::before {
+		transition: none;
+	}
 }
 
 @media (max-width: 700px) {
