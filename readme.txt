@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.9.3
+Stable tag: 2.9.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,14 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.9.4 =
+Fix only.
+* The calendar's "View Detail" link was a 30px touch target on phones. The mobile
+  rules padded the footer around it, which makes the footer roomier but leaves the
+  tappable anchor exactly as small as it was. The anchor itself is now sized.
+  Completes what 2.9.3 started -- that release fixed the event page's buttons and
+  missed the calendar's.
 
 = 2.9.3 =
 Fix only.

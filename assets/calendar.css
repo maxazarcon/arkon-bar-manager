@@ -317,7 +317,17 @@
 	}
 	.abm-calendar .abm-event-foot {
 		text-align: center;
-		padding: 11px 14px; /* roomier tap target */
+		padding: 11px 14px;
+	}
+	/* Padding on the footer does not enlarge the link inside it, which was left
+	   at 30px -- under the 44px touch minimum -- while the footer around it
+	   looked generous. Size the anchor itself. */
+	.abm-calendar .abm-event-foot a {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 44px;
+		padding: 8px 22px;
 	}
 	.abm-calendar .abm-month {
 		margin: 26px 0 12px;
