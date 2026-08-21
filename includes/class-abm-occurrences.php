@@ -20,6 +20,19 @@ class ABM_Occurrences {
 	/** @var ABM_Occurrences|null */
 	private static $instance = null;
 
+	/**
+	 * Request-scoped memo for is_recurring().
+	 *
+	 * The calendar and the Looper both ask this once per rendered row, and on a
+	 * venue calendar most rows belong to the same two weekly events — so without
+	 * a cache a 50-row batch fires 50 near-identical COUNT queries about a
+	 * handful of posts. Recurrence cannot change mid-request, so memoizing is
+	 * safe; every writer below clears the entry it touches.
+	 *
+	 * @var array<int,bool>
+	 */
+	private static $recurring_cache = array();
+
 	/** Bump to force a table upgrade in maybe_install_table(). */
 	const SCHEMA_VERSION = '1';
 
@@ -44,6 +57,12 @@ class ABM_Occurrences {
 		// Priority 25: after ABM_Meta::save (10) and sync_derived (20), so the
 		// date and recurrence meta are final before we expand them.
 		add_action( 'save_post_' . ABM_POST_TYPE, array( __CLASS__, 'on_save_post' ), 25, 2 );
+
+		// REST writes meta *after* wp_update_post(), so save_post has already run
+		// against the old values by the time abm_event_date lands. Without this
+		// hook an event created or edited over REST gets occurrences built from
+		// stale meta, or none at all.
+		add_action( 'rest_after_insert_' . ABM_POST_TYPE, array( __CLASS__, 'on_rest_save' ), 10, 1 );
 
 		// Status transitions (trash, untrash, publish from draft) change whether
 		// an event should appear at all.
@@ -150,6 +169,23 @@ class ABM_Occurrences {
 			return;
 		}
 		self::generate_for_post( $post_id );
+	}
+
+	/**
+	 * Re-derive everything once a REST request has finished writing meta.
+	 *
+	 * @param WP_Post $post Post object.
+	 */
+	public static function on_rest_save( $post ) {
+		if ( ! $post instanceof WP_Post || ABM_POST_TYPE !== $post->post_type ) {
+			return;
+		}
+		// Display strings are derived from the same meta, so refresh them here
+		// too rather than leaving them a request behind.
+		if ( class_exists( 'ABM_Meta' ) ) {
+			ABM_Meta::instance()->sync_derived( $post->ID, $post );
+		}
+		self::generate_for_post( $post->ID );
 	}
 
 	/**
@@ -265,6 +301,7 @@ class ABM_Occurrences {
 
 		$post_id = (int) $post_id;
 		self::delete_for_post( $post_id );
+		self::flush_cache( $post_id );
 
 		$date = abm_sanitize_date( get_post_meta( $post_id, 'abm_event_date', true ) );
 		if ( '' === $date ) {
@@ -309,6 +346,7 @@ class ABM_Occurrences {
 	 * @param int $post_id Event ID.
 	 */
 	public static function delete_for_post( $post_id ) {
+		self::flush_cache( $post_id );
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->delete( self::table(), array( 'post_id' => (int) $post_id ), array( '%d' ) );
@@ -496,6 +534,7 @@ class ABM_Occurrences {
 
 		$post_id = (int) $post_id;
 		self::delete_for_post( $post_id );
+		self::flush_cache( $post_id );
 
 		$seen   = array();
 		$values = array();
@@ -571,10 +610,33 @@ class ABM_Occurrences {
 	 * @return bool
 	 */
 	public static function is_recurring( $post_id ) {
+		$post_id = (int) $post_id;
+		if ( isset( self::$recurring_cache[ $post_id ] ) ) {
+			return self::$recurring_cache[ $post_id ];
+		}
+
 		global $wpdb;
 		$table = self::table();
+		// LIMIT 2 is enough to answer "more than one"; counting all 445 rows of a
+		// weekly event to learn that is wasted work.
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE post_id = %d", (int) $post_id ) ) > 1;
+		$rows = (array) $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$table} WHERE post_id = %d LIMIT 2", $post_id ) );
+
+		self::$recurring_cache[ $post_id ] = ( count( $rows ) > 1 );
+		return self::$recurring_cache[ $post_id ];
+	}
+
+	/**
+	 * Drop a memoized answer after the rows behind it change.
+	 *
+	 * @param int|null $post_id Event ID, or null to clear everything.
+	 */
+	public static function flush_cache( $post_id = null ) {
+		if ( null === $post_id ) {
+			self::$recurring_cache = array();
+			return;
+		}
+		unset( self::$recurring_cache[ (int) $post_id ] );
 	}
 
 	/**

@@ -37,6 +37,9 @@ class ABM_Meta {
 	private function __construct() {
 		add_action( 'init', array( $this, 'register_meta' ) );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
+		// custom-fields support is on purely for REST; the raw key/value panel it
+		// also switches on would just be a way to corrupt these fields by hand.
+		add_action( 'add_meta_boxes', array( $this, 'hide_custom_fields_box' ), 20 );
 		add_action( 'save_post_' . ABM_POST_TYPE, array( $this, 'save' ), 10, 2 );
 		// Recompute flyer/calendar URLs against the final permalink after insert.
 		add_action( 'save_post_' . ABM_POST_TYPE, array( $this, 'sync_derived' ), 20, 2 );
@@ -106,6 +109,13 @@ class ABM_Meta {
 	 */
 	public function meta_auth( $allowed, $meta_key, $object_id ) {
 		return current_user_can( 'edit_post', $object_id );
+	}
+
+	/**
+	 * Remove the core Custom Fields panel from the event editor.
+	 */
+	public function hide_custom_fields_box() {
+		remove_meta_box( 'postcustom', ABM_POST_TYPE, 'normal' );
 	}
 
 	public function add_meta_box() {

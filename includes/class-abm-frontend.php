@@ -70,7 +70,13 @@ class ABM_Frontend {
 	}
 
 	/**
-	 * Order the native event archive by event date, upcoming first.
+	 * Order the event category archive by each event's next upcoming date.
+	 *
+	 * Ordering by the abm_event_date meta is wrong for anything that repeats:
+	 * that value is the series *start*, so a weekly night running since 2019
+	 * sorts to the bottom of the list for ever, and still shows long after its
+	 * start date has passed. The occurrence table knows the real answer, so join
+	 * it and sort on the next date that hasn't happened yet.
 	 *
 	 * @param WP_Query $query Query.
 	 */
@@ -78,11 +84,44 @@ class ABM_Frontend {
 		if ( is_admin() || ! $query->is_main_query() ) {
 			return;
 		}
-		if ( $query->is_post_type_archive( ABM_POST_TYPE ) || $query->is_tax( ABM_TAXONOMY ) ) {
-			$query->set( 'meta_key', 'abm_event_date' );
-			$query->set( 'orderby', 'meta_value' );
-			$query->set( 'order', 'ASC' );
+		if ( ! $query->is_post_type_archive( ABM_POST_TYPE ) && ! $query->is_tax( ABM_TAXONOMY ) ) {
+			return;
 		}
+
+		// Flag this exact query so the clause filter below cannot leak into any
+		// other query that happens to run during the same request.
+		$query->set( 'abm_order_by_occurrence', true );
+		add_filter( 'posts_clauses', array( $this, 'order_archive_clauses' ), 10, 2 );
+	}
+
+	/**
+	 * Join the occurrence table and sort by the next upcoming date.
+	 *
+	 * @param array    $clauses Query clauses.
+	 * @param WP_Query $query   Query.
+	 * @return array
+	 */
+	public function order_archive_clauses( $clauses, $query ) {
+		if ( ! $query->get( 'abm_order_by_occurrence' ) ) {
+			return $clauses;
+		}
+
+		// One query, one application.
+		remove_filter( 'posts_clauses', array( $this, 'order_archive_clauses' ), 10 );
+
+		global $wpdb;
+		$occ = ABM_Occurrences::table();
+
+		$clauses['join'] .= $wpdb->prepare(
+			" INNER JOIN ( SELECT post_id, MIN(occur_date) AS abm_next_date
+				FROM {$occ} WHERE occur_date >= %s GROUP BY post_id ) abm_next
+				ON abm_next.post_id = {$wpdb->posts}.ID ", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			current_time( 'Y-m-d' )
+		);
+
+		$clauses['orderby'] = 'abm_next.abm_next_date ASC, ' . $wpdb->posts . '.ID ASC';
+
+		return $clauses;
 	}
 
 	/* --------------------------------------------------------------------- */

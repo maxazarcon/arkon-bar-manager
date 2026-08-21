@@ -50,7 +50,12 @@ class ABM_Post_Type {
 			'show_ui'            => true,
 			'show_in_menu'       => false, // Attached under our custom top-level menu instead.
 			'menu_icon'          => 'dashicons-beer',
-			'supports'           => array( 'title', 'editor', 'thumbnail', 'excerpt', 'revisions' ),
+			// 'custom-fields' is required for the REST posts controller to expose a
+			// `meta` object at all. Without it, every register_post_meta( ...
+			// show_in_rest => true ) call is silently inert over REST: the field is
+			// simply absent from responses and ignored on write. The editor's own
+			// Custom Fields panel is hidden again in ABM_Meta so the UI stays clean.
+			'supports'           => array( 'title', 'editor', 'thumbnail', 'excerpt', 'revisions', 'custom-fields' ),
 			// No archive: /music-and-events/ is an existing page (the calendar).
 			// An archive on that slug would override the page, so single events
 			// live under it while the page itself keeps resolving normally.
