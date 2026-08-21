@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.9.0
+Stable tag: 2.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,13 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.9.1 =
+Fix only.
+* The event description rendered beside the title instead of underneath it. The
+  row is a flex container of flyer / title / meta, and the description was added
+  as a fourth child, so it became its own column. Title and description now share
+  a wrapper and stack, which is what 2.9.0 intended.
 
 = 2.9.0 =
 * Event descriptions now appear in the calendar list, under the title, as a short

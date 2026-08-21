@@ -321,10 +321,12 @@ class ABM_Calendar {
 						<img src="<?php echo esc_url( $flyer ); ?>" alt="<?php echo esc_attr( $title ); ?>" loading="lazy" />
 					</a>
 				<?php endif; ?>
-				<div class="abm-event-title"><a href="<?php echo esc_url( $link ); ?>"><?php echo esc_html( $title ); ?></a></div>
-				<?php if ( $blurb ) : ?>
-					<p class="abm-event-blurb"><?php echo esc_html( $blurb ); ?></p>
-				<?php endif; ?>
+				<div class="abm-event-body">
+					<div class="abm-event-title"><a href="<?php echo esc_url( $link ); ?>"><?php echo esc_html( $title ); ?></a></div>
+					<?php if ( $blurb ) : ?>
+						<p class="abm-event-blurb"><?php echo esc_html( $blurb ); ?></p>
+					<?php endif; ?>
+				</div>
 				<div class="abm-event-meta">
 					<?php if ( $date_d ) : ?>
 						<span class="abm-meta-row abm-meta-date"><?php echo self::icon( 'calendar' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?><span><?php echo esc_html( $date_d ); ?></span></span>

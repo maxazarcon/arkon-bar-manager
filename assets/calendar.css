@@ -148,8 +148,13 @@
 	display: block;
 	border-radius: 2px;
 }
-.abm-calendar .abm-event-title {
+/* Title and description stack as a single flex child, so the blurb sits under
+   the title rather than becoming a third column beside it. */
+.abm-calendar .abm-event-body {
 	flex: 1 1 auto;
+	min-width: 0;
+}
+.abm-calendar .abm-event-title {
 	min-width: 0;
 	font-size: 22px;
 	font-weight: 700;
