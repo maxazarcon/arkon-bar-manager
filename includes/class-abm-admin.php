@@ -96,7 +96,16 @@ class ABM_Admin {
 	 * @return array
 	 */
 	public function sanitize_settings( $input ) {
-		$out = array();
+		// Start from what is already stored, so keys this form does not render are
+		// not silently dropped. recur_horizon_months, legacy_base and
+		// calendar_page_id are read by the plugin but have no field here, and
+		// rebuilding the array from scratch deleted them on every save.
+		//
+		// Every key the form does manage is overwritten unconditionally below, so
+		// an unticked checkbox still resolves to 0 rather than keeping its old
+		// value.
+		$existing = get_option( ABM_SETTINGS, array() );
+		$out      = is_array( $existing ) ? $existing : array();
 
 		$out['placeholder_id'] = isset( $input['placeholder_id'] ) ? absint( $input['placeholder_id'] ) : 0;
 		if ( $out['placeholder_id'] && 'attachment' !== get_post_type( $out['placeholder_id'] ) ) {

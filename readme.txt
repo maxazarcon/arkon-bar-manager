@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.4.0
+Stable tag: 2.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,7 +68,7 @@ each field through Dynamic Content with zero extra code.
 Arkon Event Manager menu in wp-admin:
 * All Events — list, sortable by date, with an All / Upcoming / Past filter.
 * Add Event — title (event name), date picker, start time, end time (or "Close"),
-  "Only display start date" toggle (on by default), event cost, and category
+  "End time is approximate" toggle (off by default), event cost, and category
   checklist. The flyer is the post's Featured Image (set via the Featured Image
   panel); if none is set, the global placeholder is used.
 * Categories — add / rename / remove categories (seeded with Music & Event).
@@ -124,13 +124,20 @@ Importing is restricted to administrators; the upload is validated (.csv, tab/
 comma/semicolon auto-detected, BOM-tolerant, 5 MB cap) and only HTTP(S) image
 URLs are fetched.
 
-= "Only display start date" (per event) =
+= "End time is approximate" (per event) =
 
-Set on each event (Event Details box), on by default. When enabled, an event that
-runs past midnight (e.g. 8:00 PM – 2:00 AM) is clamped to 11:59 PM of the start
-day in the Google Calendar / iCal export, so it stays on its start date instead
-of bleeding onto the next day. Uncheck it for a show you genuinely want to span
-two days. Stored as the abm_display_start_only meta key.
+Set on each event (Event Details box), **off by default**. It affects the
+Google Calendar / iCal export only, never the listing.
+
+The listing always shows an event on its start date, because an occurrence
+carries a date and a time range rather than a start date and an end date. A show
+running 8:00 PM to 1:00 AM is therefore one row, on the day it starts, reading
+"8:00 PM - 1:00 AM".
+
+Turn this on only when the end time is a placeholder or the night is genuinely
+open-ended: the export then stops at 11:59 PM of the start day instead of
+claiming a finish time. Leave it off when the end time is real, so the export
+correctly runs past midnight. Stored as the abm_display_start_only meta key.
 
 Each published event gets its own page at /music-and-events/event-title/ (the
 same base as the calendar page; the post type has no separate archive so the
@@ -203,4 +210,84 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 * Times and exports use the site timezone (Settings > General).
 * "Close" is shown literally on the frontend; calendar exports substitute the
   default "Close" time from Settings and roll past midnight automatically.
-* Uninstalling removes only the settings option; events are preserved.
+* Uninstalling removes the plugin settings, the occurrence table and the
+  scheduled task that extends it. Events, their meta and the categories are
+  preserved; delete them in the admin first if you want them gone.
+
+== Changelog ==
+
+Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
+does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.4.1 =
+Fixes only.
+* A plugin update no longer rebuilds every event's occurrences. The upgrade and
+  activation paths now call generate_missing(), which materializes only events
+  that have no date rows at all. rebuild_all() regenerates from the recurrence
+  rule, and an imported event has no rule, so running it on a finished migration
+  collapsed each event to a single date. 2.4.0 stopped that from destroying data
+  but left the call in place; this removes it.
+* Saving Settings no longer deletes plugin settings that have no field on that
+  screen. sanitize_settings() rebuilt the option from scratch, so
+  recur_horizon_months, legacy_base and calendar_page_id were wiped on every
+  save -- including the recurrence horizon documented as configurable.
+* CSV importer: "End time is approximate" is now set only for events with no end
+  time, matching the database importer. It was hardcoded on, which truncated a
+  genuine 8 PM - 1 AM show at 11:59 PM in every export it produced. (The same fix
+  landed for the database importer in 2.1.0; the CSV path was missed.)
+* CSV importer: records abm_legacy_slug, so /event-archive/<slug>/ redirects keep
+  resolving after an imported event is renamed. Previously only the database
+  importer recorded it, and the CSV path relied on the post slug still matching.
+* Removed the [abm_calendar collapsed="..."] attribute, which was accepted and
+  then ignored.
+* readme: added this changelog, corrected the "End time is approximate" default
+  (off, not on) and the uninstall description.
+
+= 2.4.0 =
+* Imported dates are no longer destroyed by a rebuild. set_explicit() marks an
+  event with abm_occurrences_explicit, and generate_for_post() refuses to
+  regenerate a multi-date verbatim set that has no recurrence rule. Setting a
+  rule clears the mark and lets the rule take over.
+* Rebuild occurrences reports how many imported events kept their original dates.
+* Events list: the Date column, the default sort and the Upcoming/Past filter all
+  read the occurrence table instead of the abm_event_date meta, which is the
+  series start -- a weekly night running since 2019 sorted to the top for ever
+  and was filed under Past even though it runs this Monday. Recurring events show
+  a repeat marker.
+  (These were written as 2.3.2 but never cut as their own build; they shipped
+  inside 2.4.0. Recorded here so the released artifacts are the ones listed.)
+
+= 2.3.1 =
+* is_recurring() memoized per request and answered with LIMIT 2 instead of
+  COUNT(*). A 100-item Looper run went from 101 queries to 1.
+* Uninstall drops the occurrence table and unschedules the cron event instead of
+  orphaning both.
+* Category archive orders by each event's next upcoming date rather than the
+  series start.
+
+= 2.3.0 =
+* Event meta reachable over the REST API, so a complete event including its
+  recurrence rule is one authenticated call. Requires custom-fields support on
+  the post type; occurrence generation moved to rest_after_insert_abm_event
+  because REST writes meta after wp_update_post().
+
+= 2.2.0 =
+* Cornerstone / Pro Looper Provider ("Bar Events (occurrences)") that iterates
+  occurrences rather than posts, with 29 fields per item.
+
+= 2.1.0 =
+* MEC database import runs in resumable batches of 20 with a progress bar. The
+  single-request import wrote all 337 events correctly but never returned a
+  response, which is indistinguishable from a dead import.
+* "End time is approximate" now defaults off. Defaulting it on truncated a
+  genuine 8 PM - 1 AM export at 11:59 PM.
+  (That fix was a pure bug fix and should have shipped on its own as 2.0.1,
+  ahead of the batched importer, so anyone on 2.0.0 could take it alone.)
+
+= 2.0.0 =
+* Occurrence model: one row per event per date, in {prefix}abm_occurrences.
+  Everything downstream reads occurrences, not posts, so a weekly event renders
+  on every date rather than once.
+* Keyset cursor pagination, collapsible month headings, MEC database importer,
+  /event-archive/ legacy redirects.
+* Breaking: new data model.

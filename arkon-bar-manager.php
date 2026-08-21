@@ -3,7 +3,7 @@
  * Plugin Name:       Arkon Event Manager
  * Plugin URI:        https://maxazarcon.com/
  * Description:       Bar event management. Create events with date, time (incl. "Close"), category and flyer, then surface them on the frontend via Themeco Pro/Cornerstone Looper + Dynamic Content, with per-event iCal and Google Calendar export.
- * Version:           2.4.0
+ * Version:           2.4.1
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Max Azarcon
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ABM_VERSION', '2.4.0' );
+define( 'ABM_VERSION', '2.4.1' );
 define( 'ABM_FILE', __FILE__ );
 define( 'ABM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ABM_URL', plugin_dir_url( __FILE__ ) );
@@ -64,6 +64,8 @@ add_action( 'plugins_loaded', 'abm_init_plugin' );
  * re-activation): flush rewrite rules so any slug change takes effect, and
  * re-sync events so permalink-derived meta (abm_ical, abm_gcal, abm_flyer_url)
  * reflects the new URLs.
+ *
+ * It deliberately does NOT rebuild occurrences. See generate_missing().
  */
 function abm_maybe_upgrade() {
 	if ( get_option( 'abm_db_version' ) === ABM_VERSION ) {
@@ -75,8 +77,13 @@ function abm_maybe_upgrade() {
 	if ( class_exists( 'ABM_Meta' ) ) {
 		ABM_Meta::instance()->resync_all();
 	}
-	// Existing events predate the occurrence table, so materialize them once.
-	ABM_Occurrences::rebuild_all();
+	// Materialize only events that have no rows at all, which is all an upgrade
+	// ever needed to do. Never rebuild_all() here: that regenerates every event
+	// from its recurrence rule, and an imported event has no rule because its
+	// dates came from MEC verbatim, so it would collapse to the single date in
+	// abm_event_date. Three routine updates took a finished migration from 1,229
+	// occurrences down to 337 in exactly that way.
+	ABM_Occurrences::generate_missing();
 	update_option( 'abm_db_version', ABM_VERSION );
 }
 add_action( 'admin_init', 'abm_maybe_upgrade' );
@@ -92,7 +99,10 @@ function abm_activate() {
 	ABM_Frontend::register_endpoint();
 	ABM_Occurrences::install_table();
 	update_option( 'abm_occurrences_schema', ABM_Occurrences::SCHEMA_VERSION );
-	ABM_Occurrences::rebuild_all();
+	// Same reasoning as the upgrade path: on a first activation nothing has rows
+	// so this is identical to a full rebuild, and on re-activation it fills the
+	// gaps instead of flattening imported dates.
+	ABM_Occurrences::generate_missing();
 	ABM_Occurrences::schedule_cron();
 	flush_rewrite_rules();
 	update_option( 'abm_db_version', ABM_VERSION );

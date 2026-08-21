@@ -561,7 +561,10 @@ class ABM_Import {
 		update_post_meta( $post_id, 'abm_event_time_end', $end );
 		update_post_meta( $post_id, 'abm_event_cost', $cost );
 		update_post_meta( $post_id, 'abm_flyer_id', $flyer_id );
-		update_post_meta( $post_id, 'abm_display_start_only', 1 );
+		// Clamp exports only where there is no real end time to honour, matching
+		// the database importer. Forcing this on truncated a genuine 8 PM - 1 AM
+		// show at 11:59 PM in every export it produced.
+		update_post_meta( $post_id, 'abm_display_start_only', ( '' === $end ) ? 1 : 0 );
 
 		update_post_meta( $post_id, 'abm_date_display', abm_format_date( $date ) );
 		update_post_meta( $post_id, 'abm_time_display', abm_format_time_range( $start, $end ) );
@@ -573,6 +576,14 @@ class ABM_Import {
 		// Provenance for dedupe on re-import.
 		update_post_meta( $post_id, self::SOURCE_KEY, $key );
 		update_post_meta( $post_id, self::SOURCE_ID, (string) $event['source_id'] );
+
+		// Record the source slug so /event-archive/<slug>/ keeps resolving even if
+		// this event is renamed later. The redirect map is driven by this meta;
+		// without it the lookup only works for as long as the post slug happens to
+		// still match the old one.
+		if ( ! empty( $event['slug'] ) ) {
+			update_post_meta( $post_id, ABM_Legacy_URLs::SLUG_META, $event['slug'] );
+		}
 	}
 
 	/**

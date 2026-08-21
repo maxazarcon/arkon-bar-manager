@@ -53,10 +53,9 @@ class ABM_Calendar {
 	public function shortcode( $atts ) {
 		$atts = shortcode_atts(
 			array(
-				'initial'   => '',
-				'more'      => '',
-				'category'  => '',
-				'collapsed' => '', // Comma-separated YYYYMM to start collapsed, or "past".
+				'initial'  => '',
+				'more'     => '',
+				'category' => '',
 			),
 			$atts,
 			'abm_calendar'

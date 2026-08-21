@@ -599,6 +599,7 @@ class ABM_Occurrences {
 				"SELECT p.ID FROM {$wpdb->posts} p
 				 LEFT JOIN {$table} o ON o.post_id = p.ID
 				 WHERE p.post_type = %s AND o.id IS NULL
+				   AND p.post_status NOT IN ('trash','auto-draft')
 				 GROUP BY p.ID",
 				ABM_POST_TYPE
 			)
