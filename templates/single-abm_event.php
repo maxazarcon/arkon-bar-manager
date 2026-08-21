@@ -62,12 +62,21 @@ while ( have_posts() ) :
 			 *
 			 * The flyer doubles as the band's background, darkened, which keeps
 			 * the page recognisably about this event before anything is read.
+			 *
+			 * The plain `hero` class on it is LOAD-BEARING and is not decoration.
+			 * The site runs a scroll listener that measures the first `.hero`
+			 * element and, once the visitor scrolls past it, adds `navbar-scrolled`
+			 * to `.x-bar-absolute` -- which is what gives the transparent navbar a
+			 * dark background so the white logo and menu stay readable over light
+			 * content. Without this class the listener finds nothing, the class is
+			 * never added, and the navigation turns invisible the moment the
+			 * visitor scrolls off this band. Renaming it breaks that silently.
 			 */
 			$abm_hero_style = $abm_flyer_url
 				? ' style="background-image:url(' . esc_url( $abm_flyer_url ) . ')"'
 				: '';
 			?>
-			<header class="abm-single-hero<?php echo $abm_flyer_url ? ' has-bg' : ''; ?>"<?php echo $abm_hero_style; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- URL escaped above. ?>>
+			<header class="hero abm-single-hero<?php echo $abm_flyer_url ? ' has-bg' : ''; ?>"<?php echo $abm_hero_style; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- URL escaped above. ?>>
 				<div class="abm-single-hero-inner">
 					<h1 class="abm-single-title"><?php the_title(); ?></h1>
 					<?php if ( $abm_date_display ) : ?>

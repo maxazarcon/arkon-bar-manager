@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.7.1
+Stable tag: 2.7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -250,6 +250,18 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.7.2 =
+Fix only.
+* The site navigation became unreadable when scrolling an event page. The theme's
+  navbar is transparent over the hero and relies on a scroll listener that
+  measures the first element with class `hero` and then adds `navbar-scrolled`,
+  which is what paints the bar dark so the white logo and menu stay visible over
+  light content. The template's band was named `abm-single-hero` only, so the
+  listener found nothing, the class was never added, and the menu disappeared
+  against the white page body as soon as the visitor scrolled.
+  The band now also carries the plain `hero` class. That class is load-bearing;
+  renaming it silently reintroduces this.
 
 = 2.7.1 =
 Fix only.
