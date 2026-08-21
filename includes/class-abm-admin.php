@@ -123,6 +123,14 @@ class ABM_Admin {
 
 		$out['date_format'] = sanitize_text_field( $input['date_format'] ?? '' );
 
+		// Clamped to the same 1-120 range ABM_Occurrences::horizon_months() enforces
+		// when reading it, so the stored value and the effective value never differ.
+		// Blank or zero means "use the default" rather than "one month".
+		$horizon                     = absint( $input['recur_horizon_months'] ?? 0 );
+		$out['recur_horizon_months'] = $horizon
+			? max( 1, min( 120, $horizon ) )
+			: ABM_Occurrences::DEFAULT_HORIZON_MONTHS;
+
 		$out['calendar_initial']        = max( 1, absint( $input['calendar_initial'] ?? 10 ) );
 		$out['calendar_load_more']      = max( 1, absint( $input['calendar_load_more'] ?? 10 ) );
 		$out['calendar_show_categories'] = empty( $input['calendar_show_categories'] ) ? 0 : 1;
@@ -142,6 +150,7 @@ class ABM_Admin {
 		$currency_symbol = esc_attr( abm_get_setting( 'currency_symbol', '$' ) );
 		$date_format     = esc_attr( abm_get_setting( 'date_format', 'j M' ) );
 		$date_preview    = esc_html( date_i18n( abm_get_setting( 'date_format', 'j M' ) ?: 'j M', current_datetime()->getTimestamp() ) );
+		$recur_horizon   = (int) ABM_Occurrences::horizon_months();
 		$cal_initial     = (int) abm_get_setting( 'calendar_initial', 10 );
 		$cal_load_more   = (int) abm_get_setting( 'calendar_load_more', 10 );
 		$cal_show_cats   = (int) abm_get_setting( 'calendar_show_categories', 1 );
@@ -198,6 +207,21 @@ class ABM_Admin {
 						<td>
 							<input type="text" class="regular-text" id="abm_venue_address" name="<?php echo esc_attr( ABM_SETTINGS ); ?>[venue_address]" value="<?php echo $venue_address; ?>" />
 							<p class="description"><?php esc_html_e( 'Added to the location field of calendar exports.', 'arkon-bar-manager' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Repeating Events', 'arkon-bar-manager' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="abm_recur_horizon_months"><?php esc_html_e( 'Generate Ahead', 'arkon-bar-manager' ); ?></label></th>
+						<td>
+							<input type="number" min="1" max="120" step="1" class="small-text" id="abm_recur_horizon_months" name="<?php echo esc_attr( ABM_SETTINGS ); ?>[recur_horizon_months]" value="<?php echo esc_attr( (string) $recur_horizon ); ?>" />
+							<?php esc_html_e( 'months', 'arkon-bar-manager' ); ?>
+							<p class="description">
+								<?php esc_html_e( 'How far ahead an event with an open-ended repeat generates dates. Measured from today and rolled forward daily, so a repeat never runs dry. 1-120 months; the default is 24. Changing this re-expands every open-ended event immediately.', 'arkon-bar-manager' ); ?><br />
+								<?php esc_html_e( 'This governs events driven by a recurrence rule only. Events imported from Modern Events Calendar carry their dates verbatim from the source and are not affected by this setting; bound those with "Skip dates before" on the Migrate & Tools screen instead.', 'arkon-bar-manager' ); ?>
+							</p>
 						</td>
 					</tr>
 				</table>

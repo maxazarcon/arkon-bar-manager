@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.4.1
+Stable tag: 2.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,8 +73,9 @@ Arkon Event Manager menu in wp-admin:
   panel); if none is set, the global placeholder is used.
 * Categories — add / rename / remove categories (seeded with Music & Event).
 * Settings — global flyer placeholder, default "Close" time (for calendar
-  exports), currency symbol, date format, venue name and address, and the
-  [abm_calendar] initial / Load More counts + category-tag visibility.
+  exports), currency symbol, date format, venue name and address, how far
+  ahead open-ended repeats generate dates, and the [abm_calendar] initial /
+  Load More counts + category-tag visibility.
 * Import — bring events in from another calendar plugin's CSV export.
 * Migrate & Tools — import directly from a Modern Events Calendar install in the
   same database (recommended over CSV, see below), rebuild occurrences, and read
@@ -218,6 +219,17 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.5.0 =
+* Settings > Repeating Events > Generate Ahead: how far ahead an open-ended
+  repeat materializes dates, 1-120 months, default 24. The plugin has always
+  read this value (recur_horizon_months) and the documentation has always
+  described it as configurable, but there was no way to set it. Saving the
+  screen re-expands every open-ended event immediately, which already happened
+  automatically on any settings change.
+  Note this governs rule-driven events only. Events imported from MEC hold
+  their dates verbatim and are unaffected; use "Skip dates before" on Migrate
+  & Tools to bound those.
 
 = 2.4.1 =
 Fixes only.
