@@ -1,9 +1,10 @@
 <?php
 /**
  * Plugin Name:       Arkon Event Manager
- * Plugin URI:        https://maxazarcon.com/
+ * Plugin URI:        https://github.com/maxazarcon/arkon-bar-manager
+ * Update URI:        https://github.com/maxazarcon/arkon-bar-manager
  * Description:       Bar event management. Create events with date, time (incl. "Close"), category and flyer, then surface them on the frontend via Themeco Pro/Cornerstone Looper + Dynamic Content, with per-event iCal and Google Calendar export.
- * Version:           2.11.1
+ * Version:           2.12.0
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Max Azarcon
@@ -17,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ABM_VERSION', '2.11.1' );
+define( 'ABM_VERSION', '2.12.0' );
 define( 'ABM_FILE', __FILE__ );
 define( 'ABM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ABM_URL', plugin_dir_url( __FILE__ ) );
@@ -27,6 +28,15 @@ define( 'ABM_POST_TYPE', 'abm_event' );
 define( 'ABM_TAXONOMY', 'abm_category' );
 define( 'ABM_SETTINGS', 'abm_settings' );
 define( 'ABM_ICAL_ENDPOINT', 'ical' );
+
+/**
+ * GitHub repository this plugin updates from, as "owner/name".
+ *
+ * Must match the Update URI header above: WordPress reads that header to decide
+ * which update_plugins_{host} filter to fire, and this constant tells the
+ * updater which repository to ask. Override with the abm_github_repo filter.
+ */
+define( 'ABM_GITHUB_REPO', 'maxazarcon/arkon-bar-manager' );
 
 require_once ABM_DIR . 'includes/helpers.php';
 require_once ABM_DIR . 'includes/class-abm-post-type.php';
@@ -42,6 +52,7 @@ require_once ABM_DIR . 'includes/class-abm-import.php';
 require_once ABM_DIR . 'includes/class-abm-mec-db.php';
 require_once ABM_DIR . 'includes/class-abm-tools.php';
 require_once ABM_DIR . 'includes/class-abm-changelog.php';
+require_once ABM_DIR . 'includes/class-abm-updater.php';
 
 /**
  * Boot the plugin once all plugins are loaded.
@@ -58,6 +69,7 @@ function abm_init_plugin() {
 	ABM_Import::instance();
 	ABM_Tools::instance();
 	ABM_Changelog::instance();
+	ABM_Updater::instance();
 }
 add_action( 'plugins_loaded', 'abm_init_plugin' );
 

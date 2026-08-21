@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.11.1
+Stable tag: 2.12.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -239,6 +239,19 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 * [abm_gcal]                       -> Google Calendar URL
 * [abm_event_export]               -> Google Calendar + iCal buttons
 
+== Updates ==
+
+Releases are published on GitHub and the plugin updates itself from them, using
+the "Update URI" mechanism built into WordPress 5.8 and later. No updater library
+is bundled and no other plugin's update checks are affected.
+
+Build the release artifact from a tag rather than by zipping the plugin folder:
+
+  git archive --format=zip --prefix=arkon-bar-manager/       -o arkon-bar-manager-X.Y.Z.zip vX.Y.Z
+
+Attach that zip to the GitHub release. It carries no repository metadata and
+unpacks to the correct folder name, so WordPress updates the plugin in place.
+
 == Notes ==
 
 * Times and exports use the site timezone (Settings > General).
@@ -252,6 +265,24 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.12.0 =
+* The plugin updates itself from its GitHub releases. New releases appear on the
+  Plugins screen and through auto-updates exactly like any other plugin.
+  It uses the mechanism WordPress added in 5.8 rather than a third-party updater
+  library: an "Update URI" header whose host is github.com makes core fire an
+  update check for this plugin and no other, so nothing else on the site is
+  touched and there is no dependency to keep current.
+* Release lookups are cached for six hours, and a failed lookup is cached for one,
+  so a rate limit or an outage does not mean an API call on every admin page load.
+* Point it at a different repository by defining ABM_GITHUB_REPO or filtering
+  abm_github_repo. The value must match the Update URI header, since that header
+  is what WordPress reads to decide whether to ask at all.
+* Attach a built zip to each GitHub release. The source archive GitHub generates
+  automatically unpacks to a folder named after the tag, which would install a
+  second copy of the plugin beside the real one instead of updating it; the plugin
+  renames the folder defensively, but a release asset built with
+  `git archive --prefix=` is the intended artifact.
 
 = 2.11.1 =
 Documentation only; no behaviour change.
