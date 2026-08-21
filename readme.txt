@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.10.0
+Stable tag: 2.10.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,16 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.10.1 =
+Fix only.
+* Between roughly 700px and 772px the event page stacked its columns but left the
+  new heading below the details -- the one arrangement the heading exists to
+  avoid. The columns stop fitting at about 772px (380 + 32 + 320 of content) while
+  the heading's placement flipped at the 700px phone breakpoint, so the two
+  disagreed across that band. Both are now tied to a single 800px threshold.
+  Found by checking 360, 480, 720, 1080 and 1440 side by side; 720 was the only
+  width that showed it.
 
 = 2.10.0 =
 * The event page now restates the event title as a plain heading in the body. The

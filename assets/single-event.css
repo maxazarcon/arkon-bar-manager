@@ -354,6 +354,28 @@
 	}
 }
 
+/* The two-column threshold.
+
+   Flyer (380) + gap (32) + details (320) = 732px of content, so the columns stop
+   fitting at roughly a 772px viewport. The heading's placement has to flip at the
+   same point, not at the phone breakpoint: between the two the layout stacked
+   while the heading stayed below the details, which is the one arrangement this
+   heading exists to avoid. 800px leaves a little slack over the arithmetic. */
+@media (max-width: 800px) {
+	.abm-single-flyer {
+		flex: 0 1 100%;
+	}
+
+	.abm-single.has-description .abm-single-heading {
+		order: 2;
+		margin: 0 0 4px;
+	}
+
+	.abm-single.has-description .abm-single-detail {
+		order: 3;
+	}
+}
+
 @media (max-width: 700px) {
 	.abm-single {
 		--abm-hero-min: 300px;
@@ -371,16 +393,6 @@
 		gap: 24px;
 	}
 
-	/* Stacked: the heading belongs above the details at every width, description
-	   or not, so the visitor reads what the event is before its meta list. */
-	.abm-single.has-description .abm-single-heading {
-		order: 2;
-		margin: 0 0 4px;
-	}
-
-	.abm-single.has-description .abm-single-detail {
-		order: 3;
-	}
 
 	.abm-single-flyer {
 		flex-basis: 100%;
