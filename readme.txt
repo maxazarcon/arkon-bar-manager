@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.10.3
+Stable tag: 2.11.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,16 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.11.0 =
+* New Changelog screen under Event Manager, alongside Settings and Migrate &
+  Tools. It renders this file's changelog section rather than keeping a second
+  copy in PHP, so the two cannot drift -- readme.txt is what ships and what the
+  versioning convention already requires be updated on every build.
+* Each release is tagged Breaking / New / Fix, derived from the version numbers
+  themselves rather than from the prose, and the running version is marked
+  Installed so it is obvious which build a site is on.
+* The Settings screen now shows the running version and links to it.
 
 = 2.10.3 =
 Fix only.

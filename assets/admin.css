@@ -49,3 +49,67 @@
 	line-height: 1;
 	cursor: help;
 }
+
+/* Changelog screen -------------------------------------------------------
+   Read top to bottom, newest first. The tag on each heading is derived from
+   the version numbers rather than the prose, so it cannot disagree with them. */
+
+.abm-changelog .abm-cl-intro {
+	max-width: 46em;
+	margin: 16px 0 24px;
+	color: #50575e;
+}
+
+.abm-changelog .abm-cl-entry {
+	max-width: 46em;
+	padding: 4px 0 14px;
+	border-top: 1px solid #dcdcde;
+}
+
+.abm-changelog .abm-cl-entry.is-current {
+	border-left: 3px solid #2271b1;
+	padding-left: 16px;
+	background: #f6f7f7;
+}
+
+.abm-changelog .abm-cl-entry h2 {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	font-size: 1.15rem;
+	margin: 14px 0 6px;
+}
+
+.abm-changelog .abm-cl-tag {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	padding: 3px 8px;
+	border-radius: 3px;
+	line-height: 1.6;
+	color: #fff;
+}
+
+/* Breaking / new / fix, matching MAJOR.MINOR.PATCH. */
+.abm-changelog .abm-cl-major   { background: #b32d2e; }
+.abm-changelog .abm-cl-minor   { background: #2271b1; }
+.abm-changelog .abm-cl-patch   { background: #646970; }
+.abm-changelog .abm-cl-current { background: #007017; }
+
+.abm-changelog .abm-cl-note {
+	margin: 4px 0 8px;
+	font-style: italic;
+	color: #50575e;
+}
+
+.abm-changelog .abm-cl-entry ul {
+	margin: 6px 0 0 18px;
+	list-style: disc;
+}
+
+.abm-changelog .abm-cl-entry li {
+	margin: 0 0 7px;
+	line-height: 1.6;
+}

@@ -159,6 +159,17 @@ class ABM_Admin {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Arkon Event Manager Settings', 'arkon-bar-manager' ); ?></h1>
+			<p class="description">
+				<?php
+				printf(
+					/* translators: 1: version number, 2: link to the changelog screen. */
+					esc_html__( 'Version %1$s — %2$s', 'arkon-bar-manager' ),
+					esc_html( ABM_VERSION ),
+					'<a href="' . esc_url( admin_url( 'edit.php?post_type=' . ABM_POST_TYPE . '&page=' . ABM_Changelog::SLUG ) ) . '">'
+						. esc_html__( 'what changed', 'arkon-bar-manager' ) . '</a>'
+				);
+				?>
+			</p>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'abm_settings_group' ); ?>
 				<table class="form-table" role="presentation">
@@ -481,6 +492,12 @@ class ABM_Admin {
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		$is_event_edit = $screen && ABM_POST_TYPE === $screen->post_type && in_array( $screen->base, array( 'post', 'post-new' ), true );
 		$is_settings   = ( false !== strpos( (string) $hook, 'abm-settings' ) );
+		$is_changelog  = ( false !== strpos( (string) $hook, ABM_Changelog::SLUG ) );
+
+		if ( $is_changelog ) {
+			wp_enqueue_style( 'abm-admin', ABM_URL . 'assets/admin.css', array(), ABM_VERSION );
+			return; // The changelog screen needs the stylesheet and nothing else.
+		}
 
 		if ( ! $is_event_edit && ! $is_settings ) {
 			return;
