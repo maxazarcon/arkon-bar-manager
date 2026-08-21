@@ -403,3 +403,13 @@
 		line-height: 1.4;
 	}
 }
+
+/* Category archive. Reuses the hero and body rules above; only the calendar
+   embedded beneath them needs its own breathing room. */
+.abm-archive .abm-calendar {
+	margin-top: 4px;
+}
+
+.abm-archive .abm-single-back {
+	margin-top: 32px;
+}

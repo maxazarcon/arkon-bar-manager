@@ -354,3 +354,18 @@
 		font-size: 17px;
 	}
 }
+
+/* Category links in the meta column. Quiet by default so the row still reads as
+   one target, picking up the accent only on hover. */
+.abm-calendar .abm-meta-cat a {
+	color: inherit;
+	text-decoration: none;
+	border-bottom: 1px solid transparent;
+	transition: color var(--abm-ease), border-color var(--abm-ease);
+}
+
+.abm-calendar .abm-meta-cat a:hover,
+.abm-calendar .abm-meta-cat a:focus-visible {
+	color: var(--abm-accent);
+	border-bottom-color: currentColor;
+}

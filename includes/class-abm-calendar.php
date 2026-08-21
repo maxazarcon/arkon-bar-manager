@@ -306,10 +306,23 @@ class ABM_Calendar {
 			$blurb = wp_trim_words( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ), 26, '&hellip;' );
 		}
 
+		// Categories link to their archive, as the previous calendar's did. Those
+		// URLs are already public and indexed, and this taxonomy claims the same
+		// base, so rendering the names as plain text would quietly drop a working
+		// route rather than simplify one.
 		$cats = '';
 		if ( abm_show_category_for( $post_id ) ) {
 			$terms = get_the_terms( $post_id, ABM_TAXONOMY );
-			$cats  = ( $terms && ! is_wp_error( $terms ) ) ? implode( ', ', wp_list_pluck( $terms, 'name' ) ) : '';
+			if ( $terms && ! is_wp_error( $terms ) ) {
+				$links = array();
+				foreach ( $terms as $term ) {
+					$term_link = get_term_link( $term );
+					$links[]   = is_wp_error( $term_link )
+						? esc_html( $term->name )
+						: '<a href="' . esc_url( $term_link ) . '">' . esc_html( $term->name ) . '</a>';
+				}
+				$cats = implode( ', ', $links );
+			}
 		}
 
 		ob_start();
@@ -335,7 +348,7 @@ class ABM_Calendar {
 						<span class="abm-meta-row abm-meta-time"><?php echo self::icon( 'clock' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?><span><?php echo esc_html( $time_d ); ?></span></span>
 					<?php endif; ?>
 					<?php if ( $cats ) : ?>
-						<span class="abm-meta-row abm-meta-cat"><?php echo self::icon( 'folder' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?><span><?php echo esc_html( $cats ); ?></span></span>
+						<span class="abm-meta-row abm-meta-cat"><?php echo self::icon( 'folder' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?><span><?php echo $cats; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- anchors assembled above from esc_url() and esc_html(). ?></span></span>
 					<?php endif; ?>
 					<?php if ( $cost_d ) : ?>
 						<span class="abm-meta-row abm-meta-cost"><?php echo self::icon( 'ticket' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?><span><?php echo esc_html( $cost_d ); ?></span></span>

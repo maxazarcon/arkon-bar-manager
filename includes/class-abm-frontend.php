@@ -37,6 +37,7 @@ class ABM_Frontend {
 		add_action( 'template_redirect', array( $this, 'maybe_output_ical' ) );
 		add_action( 'pre_get_posts', array( $this, 'order_archive' ) );
 		add_filter( 'single_template', array( $this, 'single_template' ) );
+		add_filter( 'taxonomy_template', array( $this, 'taxonomy_template' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_single_assets' ) );
 
 		add_shortcode( 'abm_event_date', array( $this, 'sc_date' ) );
@@ -149,15 +150,24 @@ class ABM_Frontend {
 	 *
 	 * @return bool
 	 */
-	private function should_supply_template() {
-		if ( ! is_singular( ABM_POST_TYPE ) ) {
+	private function should_supply_template( $which = 'single' ) {
+		$applies = ( 'taxonomy' === $which )
+			? is_tax( ABM_TAXONOMY )
+			: is_singular( ABM_POST_TYPE );
+
+		if ( ! $applies ) {
 			return false;
 		}
 		if ( ! abm_get_setting( 'single_template', 1 ) ) {
 			return false;
 		}
-		// A theme that has gone to the trouble of styling this post type wins.
-		return '' === (string) locate_template( array( 'single-' . ABM_POST_TYPE . '.php' ) );
+
+		// A theme that has gone to the trouble of styling these wins.
+		$theme_template = ( 'taxonomy' === $which )
+			? array( 'taxonomy-' . ABM_TAXONOMY . '.php', 'taxonomy-' . ABM_TAXONOMY . '-{term}.php' )
+			: array( 'single-' . ABM_POST_TYPE . '.php' );
+
+		return '' === (string) locate_template( $theme_template );
 	}
 
 	/**
@@ -165,7 +175,7 @@ class ABM_Frontend {
 	 * @return string
 	 */
 	public function single_template( $template ) {
-		if ( ! $this->should_supply_template() ) {
+		if ( ! $this->should_supply_template( 'single' ) ) {
 			return $template;
 		}
 		$own = ABM_DIR . 'templates/single-' . ABM_POST_TYPE . '.php';
@@ -173,10 +183,27 @@ class ABM_Frontend {
 	}
 
 	/**
+	 * The category archive, for the same reason as the single view: without it a
+	 * theme prints excerpt fragments and pagination and nothing that identifies an
+	 * event. Those URLs are already public — the previous calendar linked every
+	 * row's category to them — so they cannot be allowed to degrade.
+	 *
+	 * @param string $template Resolved template path.
+	 * @return string
+	 */
+	public function taxonomy_template( $template ) {
+		if ( ! $this->should_supply_template( 'taxonomy' ) ) {
+			return $template;
+		}
+		$own = ABM_DIR . 'templates/taxonomy-' . ABM_TAXONOMY . '.php';
+		return file_exists( $own ) ? $own : $template;
+	}
+
+	/**
 	 * Styles for the template above, loaded only when it is the one rendering.
 	 */
 	public function enqueue_single_assets() {
-		if ( ! $this->should_supply_template() ) {
+		if ( ! $this->should_supply_template( 'single' ) && ! $this->should_supply_template( 'taxonomy' ) ) {
 			return;
 		}
 		wp_enqueue_style( 'abm-single-event', ABM_URL . 'assets/single-event.css', array(), ABM_VERSION );

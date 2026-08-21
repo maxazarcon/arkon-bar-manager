@@ -231,7 +231,7 @@ class ABM_Admin {
 						<td>
 							<label>
 								<input type="checkbox" name="<?php echo esc_attr( ABM_SETTINGS ); ?>[single_template]" value="1" <?php checked( $single_template, 1 ); ?> />
-								<?php esc_html_e( 'Use the plugin’s own layout for single event pages', 'arkon-bar-manager' ); ?>
+								<?php esc_html_e( 'Use the plugin’s own layout for event pages and category archives', 'arkon-bar-manager' ); ?>
 							</label>
 							<p class="description">
 								<?php esc_html_e( 'Most themes have no layout for this post type and fall back to a generic one, which on some themes renders the page shell and nothing else -- no title, no date, no flyer. That matters because old /event-archive/ links redirect to these pages. With this on, the plugin supplies a plain layout showing the flyer, date, time, category, cover, description, export buttons and the event’s other upcoming dates.', 'arkon-bar-manager' ); ?><br />

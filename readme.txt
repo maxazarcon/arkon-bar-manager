@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.12.1
+Stable tag: 2.13.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -282,6 +282,22 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.13.0 =
+* Event categories in the calendar are links again, pointing at their archive.
+  The previous calendar linked them, those URLs are public and indexed, and this
+  taxonomy claims the same base -- rendering the names as plain text quietly
+  dropped a working route rather than simplifying one.
+* Category archives get a layout. Without one a theme prints excerpt fragments
+  and pagination and nothing that identifies an event, which is the same failure
+  single event pages had before 2.7.0 and matters more here, because those URLs
+  were already being linked from every row of the old calendar.
+  The archive renders the calendar shortcode filtered to the term, so there is one
+  renderer rather than two that can drift, and it inherits load-more, month
+  dividers and collapse. It shows upcoming dates only, matching how the archive
+  is already ordered.
+* A theme template named taxonomy-abm_category.php still wins, and the Event
+  Pages setting switches both templates off together.
 
 = 2.12.1 =
 Fixes and housekeeping; no new surface.
