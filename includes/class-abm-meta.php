@@ -62,9 +62,6 @@ class ABM_Meta {
 			'abm_date_display',
 			'abm_time_display',
 			'abm_cost_display',
-			'abm_flyer_url',
-			'abm_ical',
-			'abm_gcal',
 			'abm_recur_type',
 			'abm_recur_weekdays',
 			'abm_recur_until',
@@ -82,6 +79,34 @@ class ABM_Meta {
 					'sanitize_callback' => 'sanitize_text_field',
 					'auth_callback'     => array( $this, 'meta_auth' ),
 				)
+			);
+		}
+
+		// URLs need their own sanitizer. sanitize_text_field() contains a loop that
+		// deletes every percent-encoded sequence it finds (see _sanitize_text_fields()
+		// in wp-includes/formatting.php), which is correct for prose and destructive
+		// for a URL. abm_gcal carries an encoded query string, so registering it as a
+		// text field stripped every %20, %3A and %2C on save: "Ascension featuring
+		// Kailah Newcity" reached Google as "AscensionfeaturingKailahNewcity".
+		//
+		// The closure takes one argument on purpose. register_post_meta() passes
+		// ( $value, $meta_key, $object_type ), and esc_url_raw()'s second parameter is
+		// $protocols -- handing it a meta key would be meaningless.
+		$sanitize_url = static function ( $value ) {
+			return esc_url_raw( (string) $value );
+		};
+
+		foreach ( array( 'abm_flyer_url', 'abm_ical', 'abm_gcal' ) as $url_key ) {
+			register_post_meta(
+				ABM_POST_TYPE,
+				$url_key,
+				array(
+					'type'              => 'string',
+					'single'            => true,
+					'show_in_rest'      => true,
+					'sanitize_callback' => $sanitize_url,
+					'auth_callback'     => array( $this, 'meta_auth' ),
+				),
 			);
 		}
 

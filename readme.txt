@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.10.1
+Stable tag: 2.10.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,25 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.10.2 =
+Fix only.
+* "Add to Google Calendar" sent Google a title and description with every space
+  and most punctuation removed: "Ascension featuring Kailah Newcity" arrived as
+  "AscensionfeaturingKailahNewcity", and "Doors at 2:00pm, music at 3:00pm"
+  as "Doorsat200pmmusicat300pm".
+  abm_gcal, abm_ical and abm_flyer_url are URLs but were registered with
+  sanitize_text_field as their sanitize callback. That function contains a loop
+  which deletes every percent-encoded sequence it finds -- correct for prose,
+  destructive for a URL -- so each save stripped the %20, %3A and %2C out of the
+  Google Calendar query string. They now use esc_url_raw.
+  abm_gcal was broken on every event, since its query string is always encoded.
+  abm_ical and abm_flyer_url were only affected when the URL happened to contain
+  an encoded character, such as a flyer filename with a space in it.
+* Existing events repair themselves on upgrade: the derived values are rebuilt by
+  the resync the upgrade path already runs.
+* The .ics download was never affected. It is generated per request and never
+  round-trips through post meta.
 
 = 2.10.1 =
 Fix only.
