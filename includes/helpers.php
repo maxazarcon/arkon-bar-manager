@@ -307,7 +307,12 @@ function abm_build_gcal_url( $post_id, $ymd, $start, $end ) {
 	if ( '' !== $cost ) {
 		/* translators: %s: cover charge. */
 		$line    = sprintf( __( 'Cover: %s', 'arkon-bar-manager' ), $cost );
-		$details = '' !== $details ? $details . "\n\n" . $line : $line;
+		// Joined with a space, not a blank line. A newline cannot survive the trip:
+		// esc_url() strips %0d and %0a outright as a header-injection guard, so an
+		// encoded line break is removed from any URL WordPress sanitizes and the two
+		// sentences arrive run together as "Hop).Cover: $5". The .ics export keeps a
+		// real blank line, because that payload never passes through a URL escaper.
+		$details = '' !== $details ? $details . ' ' . $line : $line;
 	}
 
 	$location = trim( abm_get_setting( 'venue_name', '' ) . ' ' . abm_get_setting( 'venue_address', '' ) );

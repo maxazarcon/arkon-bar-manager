@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.10.2
+Stable tag: 2.10.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,16 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.10.3 =
+Fix only.
+* The Google Calendar description ran the cover charge onto the end of the
+  previous sentence -- "...Noise Hop).Cover: $5". It was joined with a blank line,
+  which cannot survive the trip: esc_url() strips %0d and %0a outright as a
+  header-injection guard, so an encoded line break is removed from any URL
+  WordPress sanitizes. Joined with a space instead.
+  The .ics export is unaffected and keeps its blank line, because that payload is
+  never passed through a URL escaper.
 
 = 2.10.2 =
 Fix only.

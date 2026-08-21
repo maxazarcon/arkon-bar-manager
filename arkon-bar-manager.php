@@ -3,7 +3,7 @@
  * Plugin Name:       Arkon Event Manager
  * Plugin URI:        https://maxazarcon.com/
  * Description:       Bar event management. Create events with date, time (incl. "Close"), category and flyer, then surface them on the frontend via Themeco Pro/Cornerstone Looper + Dynamic Content, with per-event iCal and Google Calendar export.
- * Version:           2.10.2
+ * Version:           2.10.3
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Max Azarcon
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ABM_VERSION', '2.10.2' );
+define( 'ABM_VERSION', '2.10.3' );
 define( 'ABM_FILE', __FILE__ );
 define( 'ABM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ABM_URL', plugin_dir_url( __FILE__ ) );
