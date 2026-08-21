@@ -1,0 +1,41 @@
+.abm-fields p {
+	margin-bottom: 16px;
+}
+
+.abm-fields label {
+	display: inline-block;
+}
+
+.abm-fields input[type="time"],
+.abm-fields input[type="date"] {
+	min-width: 160px;
+}
+
+.abm-flyer-preview img,
+.abm-placeholder-preview img {
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+/* Recurrence block */
+.abm-recur {
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 16px 4px;
+	margin: 0 0 16px;
+	background: #fbfbfc;
+}
+
+.abm-recur legend {
+	padding: 0 6px;
+}
+
+.abm-recur-detail p {
+	margin-bottom: 14px;
+}
+
+.abm-recur-count-note {
+	border-top: 1px solid #e7e7ea;
+	padding-top: 10px;
+	color: #50575e;
+}

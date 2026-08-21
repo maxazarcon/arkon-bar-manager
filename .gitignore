@@ -1,0 +1,10 @@
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Build output — releases are produced from this tree, not stored in it
+*.zip

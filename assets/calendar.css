@@ -1,0 +1,263 @@
+/* Arkon Event Manager — [abm_calendar] frontend list.
+   Fonts are inherited from the theme so it blends with Cornerstone/Pro.
+   Override --abm-accent to recolor the icons / Load More hover. */
+.abm-calendar {
+	--abm-accent: #d6006e;
+	max-width: 100%;
+}
+
+.abm-calendar * {
+	box-sizing: border-box;
+}
+
+/* A theme that sets display on article/div would otherwise beat the [hidden]
+   attribute, so state it explicitly for the nodes we toggle. */
+.abm-calendar .abm-event[hidden],
+.abm-calendar .abm-calendar-more[hidden] {
+	display: none !important;
+}
+
+/* Month divider — the heading is the collapse control, so the whole row is a
+   button flanked by two rules. */
+.abm-calendar .abm-month {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin: 34px 0 16px;
+}
+.abm-calendar .abm-month::before,
+.abm-calendar .abm-month::after {
+	content: "";
+	flex: 1 1 auto;
+	height: 1px;
+	background: #e4e4e4;
+}
+
+.abm-calendar .abm-month-toggle {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	/* Reset the theme's button chrome: this reads as a heading, not a control. */
+	background: none;
+	border: 0;
+	padding: 4px 6px;
+	margin: 0;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #8a8a8a;
+	font: inherit;
+	font-size: 13px;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	line-height: 1.2;
+	transition: color 0.15s ease;
+}
+.abm-calendar .abm-month-toggle:hover {
+	color: var(--abm-accent);
+}
+/* Themes tend to give every button a focus ring; suppress it for pointer
+   focus so clicking a heading doesn't leave a box behind, then put a real one
+   back for keyboard users. */
+.abm-calendar .abm-month-toggle:focus {
+	outline: none;
+	box-shadow: none;
+}
+.abm-calendar .abm-month-toggle:focus-visible {
+	outline: 2px solid var(--abm-accent);
+	outline-offset: 2px;
+}
+
+.abm-calendar .abm-month-chevron {
+	flex: none;
+	transition: transform 0.18s ease;
+}
+/* Collapsed points right; expanded points down. */
+.abm-calendar .abm-month-collapsed .abm-month-chevron {
+	transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.abm-calendar .abm-month-chevron {
+		transition: none;
+	}
+}
+
+/* Event row */
+.abm-calendar .abm-event {
+	background: #fff;
+	border: 1px solid #ededed;
+	border-radius: 4px;
+	margin-bottom: 14px;
+	overflow: hidden;
+}
+.abm-calendar .abm-event-main {
+	display: flex;
+	align-items: center;
+	gap: 22px;
+	padding: 18px;
+}
+.abm-calendar .abm-event-flyer {
+	flex: 0 0 auto;
+	width: 130px;
+	display: block;
+}
+/* Fixed width, natural height: the whole flyer always shows. */
+.abm-calendar .abm-event-flyer img {
+	width: 130px;
+	height: auto;
+	display: block;
+	border-radius: 2px;
+}
+.abm-calendar .abm-event-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.25;
+	overflow-wrap: break-word;
+}
+.abm-calendar .abm-event-title a {
+	color: inherit;
+	text-decoration: none;
+}
+.abm-calendar .abm-event-title a:hover {
+	color: var(--abm-accent);
+}
+
+/* Meta column */
+.abm-calendar .abm-event-meta {
+	flex: 0 0 auto;
+	width: 190px;
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	font-size: 13px;
+	color: #3f3f3f;
+}
+.abm-calendar .abm-meta-row {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+}
+.abm-calendar .abm-ico {
+	color: var(--abm-accent);
+	flex: none;
+}
+.abm-calendar .abm-meta-date {
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+/* Footer link */
+.abm-calendar .abm-event-foot {
+	border-top: 1px solid #f0f0f0;
+	background: #fafafa;
+	padding: 9px 18px;
+	text-align: right;
+}
+.abm-calendar .abm-event-foot a {
+	font-size: 11px;
+	letter-spacing: 1.5px;
+	text-transform: uppercase;
+	color: #888;
+	text-decoration: none;
+}
+.abm-calendar .abm-event-foot a:hover {
+	color: var(--abm-accent);
+}
+
+/* Load More */
+.abm-calendar .abm-calendar-more {
+	text-align: center;
+	margin: 28px 0 8px;
+}
+.abm-calendar .abm-load-more {
+	background: #fff;
+	border: 1px solid #cfcfcf;
+	border-radius: 30px;
+	padding: 12px 36px;
+	font-size: 12px;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	cursor: pointer;
+	color: #333;
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.abm-calendar .abm-load-more:hover {
+	background: var(--abm-accent);
+	border-color: transparent;
+	color: #fff;
+}
+.abm-calendar .abm-load-more[disabled] {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.abm-calendar .abm-empty {
+	text-align: center;
+	color: #8a8a8a;
+	padding: 24px 0;
+}
+
+/* Tablet: narrow the meta column a touch. */
+@media (max-width: 782px) {
+	.abm-calendar .abm-event-meta {
+		width: 168px;
+	}
+	.abm-calendar .abm-event-title {
+		font-size: 20px;
+	}
+}
+
+/* Phone: flyer + title on the first row, meta wraps to a row beneath. */
+@media (max-width: 600px) {
+	.abm-calendar .abm-event-main {
+		flex-wrap: wrap;
+		gap: 14px;
+		padding: 14px;
+	}
+	.abm-calendar .abm-event-flyer,
+	.abm-calendar .abm-event-flyer img {
+		width: 92px;
+	}
+	.abm-calendar .abm-event-title {
+		flex: 1 1 0;
+		min-width: 0; /* let long titles wrap instead of overflowing */
+		font-size: 18px;
+	}
+	.abm-calendar .abm-event-meta {
+		flex: 1 0 100%;
+		width: 100%;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: 6px 18px;
+	}
+	.abm-calendar .abm-event-foot {
+		text-align: center;
+		padding: 11px 14px; /* roomier tap target */
+	}
+	.abm-calendar .abm-month {
+		margin: 26px 0 12px;
+		font-size: 12px;
+		letter-spacing: 1.5px;
+	}
+	.abm-calendar .abm-calendar-more {
+		margin: 22px 0 8px;
+	}
+	.abm-calendar .abm-load-more {
+		width: 100%;
+		padding: 15px 0; /* ~48px tall, comfortable thumb target */
+	}
+}
+
+/* Very small phones: ensure nothing crowds. */
+@media (max-width: 360px) {
+	.abm-calendar .abm-event-flyer,
+	.abm-calendar .abm-event-flyer img {
+		width: 76px;
+	}
+	.abm-calendar .abm-event-title {
+		font-size: 17px;
+	}
+}
