@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.0
+Stable tag: 2.13.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -282,6 +282,15 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.13.1 =
+Fix only.
+* "Check again" on the Updates screen now really re-checks. Release lookups are
+  cached for six hours, and WordPress's force-check clears its own update
+  transient but knows nothing about that cache, so a release published in the
+  last six hours stayed invisible however many times the button was pressed --
+  which reads as the updater being broken rather than being cached. A forced
+  check now bypasses the cache; ordinary checks still use it.
 
 = 2.13.0 =
 * Event categories in the calendar are links again, pointing at their archive.

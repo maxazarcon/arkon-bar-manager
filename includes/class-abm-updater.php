@@ -152,7 +152,14 @@ class ABM_Updater {
 			return $update;
 		}
 
-		$release = self::latest_release();
+		// "Check again" has to mean check again. WordPress's force-check clears its
+		// own update transient but knows nothing about the cache below, so without
+		// this a release published in the last six hours stays invisible however
+		// many times the button is pressed — which reads as the updater being broken.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only; core does not nonce this either.
+		$force = ! empty( $_GET['force-check'] );
+
+		$release = self::latest_release( $force );
 		if ( ! $release || '' === $release['package'] ) {
 			return $update;
 		}
