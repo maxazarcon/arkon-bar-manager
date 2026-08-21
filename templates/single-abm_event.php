@@ -46,8 +46,14 @@ while ( have_posts() ) :
 	// Other nights this event runs. Empty for a single-date event, which is most
 	// of them, so the block simply does not render.
 	$abm_upcoming = ABM_Occurrences::upcoming_for( $abm_id, 12, $abm_date );
+
+	// The hero sets the title in the theme's script face over a darkened flyer,
+	// which is handsome and not especially easy to read. A plain restatement in
+	// the body carries the legibility. Where it sits depends on whether there is
+	// a description for it to head -- see the CSS.
+	$abm_has_desc = '' !== trim( (string) get_the_content() );
 	?>
-	<div class="abm-single">
+	<div class="abm-single<?php echo $abm_has_desc ? ' has-description' : ''; ?>">
 		<article id="post-<?php the_ID(); ?>" <?php post_class( 'abm-single-event' ); ?>>
 
 			<?php
@@ -158,13 +164,25 @@ while ( have_posts() ) :
 						</div>
 					<?php endif; ?>
 				</div>
-			</div>
 
-			<?php if ( trim( get_the_content() ) ) : ?>
-				<div class="abm-single-content entry-content">
-					<?php the_content(); ?>
-				</div>
-			<?php endif; ?>
+				<?php
+				/*
+				 * Heading and description live inside .abm-single-body so all four blocks
+				 * are siblings in one flex container and CSS `order` alone can place them:
+				 * on a wide screen the flyer and details share a row and the heading
+				 * introduces the description beneath; on a phone everything stacks and the
+				 * heading rises above the details. One element, no duplication, nothing
+				 * hidden from assistive technology.
+				 */
+				?>
+				<h2 class="abm-single-heading"><?php the_title(); ?></h2>
+
+				<?php if ( $abm_has_desc ) : ?>
+					<div class="abm-single-content entry-content">
+						<?php the_content(); ?>
+					</div>
+				<?php endif; ?>
+			</div>
 
 			<p class="abm-single-back">
 				<?php

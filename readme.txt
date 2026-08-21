@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.9.4
+Stable tag: 2.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,18 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.10.0 =
+* The event page now restates the event title as a plain heading in the body. The
+  hero sets it in the theme's script face over a darkened flyer, which is handsome
+  and not especially easy to read, particularly on a phone.
+  On a wide screen the heading introduces the description beneath the flyer and
+  details. On a phone everything stacks and the heading rises above the details,
+  so the visitor knows what they are reading before the meta list. When the event
+  has no description the heading sits beside the details at every width rather
+  than stranding itself below the columns.
+  It is one element placed by CSS `order`, not two copies with one hidden, so
+  nothing is duplicated for screen readers.
 
 = 2.9.4 =
 Fix only.

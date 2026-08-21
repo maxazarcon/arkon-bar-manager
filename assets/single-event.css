@@ -107,7 +107,17 @@
 	align-items: flex-start;
 }
 
+/* Four siblings in one flex container, placed by `order` alone.
+
+   Wide screen:  [ flyer | details ]      heading, then description beneath.
+   Phone:        flyer, heading, details, description — the heading rises so the
+                 visitor knows what they are reading before the meta list.
+
+   When there is no description the heading has nothing to introduce, so it moves
+   up beside the details on every width rather than stranding itself below the
+   columns. Hence .has-description. */
 .abm-single-flyer {
+	order: 1;
 	flex: 0 1 380px;
 	min-width: 0;
 }
@@ -120,8 +130,29 @@
 }
 
 .abm-single-detail {
+	order: 3;
 	flex: 1 1 320px;
 	min-width: 0;
+}
+
+/* Plain, readable restatement of the title — body face, not the hero script. */
+.abm-single-heading {
+	order: 2;
+	flex: 1 0 100%;
+	margin: 0 0 4px;
+	color: var(--abm-ink);
+	font-size: clamp(1.3rem, 1.05rem + 0.8vw, 1.7rem);
+	line-height: 1.25;
+}
+
+/* With a description, the heading introduces it below the two columns. */
+.abm-single.has-description .abm-single-heading {
+	order: 4;
+	margin: 8px 0 0;
+}
+
+.abm-single.has-description .abm-single-detail {
+	order: 2;
 }
 
 /* Meta list ------------------------------------------------------------- */
@@ -246,9 +277,9 @@
    set as a readable paragraph rather than boxed and labelled the way the old
    calendar did it. Measure capped so it stays comfortable on a wide screen. */
 .abm-single-content {
-	margin: 36px 0 0;
-	padding-top: 28px;
-	border-top: 1px solid var(--abm-rule);
+	order: 5;
+	flex: 1 0 100%;
+	margin: 12px 0 0;
 	max-width: 68ch;
 	color: var(--abm-ink);
 	font-size: 1.05rem;
@@ -338,6 +369,17 @@
 
 	.abm-single-body {
 		gap: 24px;
+	}
+
+	/* Stacked: the heading belongs above the details at every width, description
+	   or not, so the visitor reads what the event is before its meta list. */
+	.abm-single.has-description .abm-single-heading {
+		order: 2;
+		margin: 0 0 4px;
+	}
+
+	.abm-single.has-description .abm-single-detail {
+		order: 3;
 	}
 
 	.abm-single-flyer {
