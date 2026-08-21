@@ -169,7 +169,13 @@
 /* Matched to the calendar's "View Detail" button: a quiet bordered pill that
    inverts to charcoal with a white label. */
 .abm-single .abm-export a {
-	display: inline-block;
+	/* inline-flex + min-height rather than padding alone, so the box clears the
+	   44px touch-target minimum without the label drifting off centre. The
+	   calendar's Load More is sized the same way for the same reason. */
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
 	padding: 11px 18px;
 	border: 1px solid #e8e8e8;
 	border-radius: 4px;
@@ -278,6 +284,10 @@
 .abm-single-back a {
 	display: inline-flex;
 	align-items: center;
+	/* Text-only links are easy to leave as 16px-tall tap targets. This is the
+	   last control on the page and the one a phone visitor is most likely to
+	   reach for, so give it a real target without changing how it looks. */
+	min-height: 44px;
 	gap: 0.5em;
 	color: var(--abm-ink);
 	text-decoration: none;

@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.9.2
+Stable tag: 2.9.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,13 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.9.3 =
+Fix only.
+* The event page's export buttons and its "All events" link were below the 44px
+  minimum touch target -- 39px and 16px respectively. Both now clear it without
+  any change to how they look. The calendar's Load More was already sized this
+  way; the event page had not caught up.
 
 = 2.9.2 =
 Fix only.
