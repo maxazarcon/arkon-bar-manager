@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.5.0
+Stable tag: 2.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -159,6 +159,32 @@ Reference these inside a Looper Consumer with {{dc:post:meta key="..."}}:
 * abm_event_time_end   H:i or "close" (raw)
 * abm_flyer_id         flyer attachment ID (mirrors the Featured Image)
 
+= REST API =
+
+Event meta is exposed on wp/v2/abm_event, so a whole event including its
+recurrence rule can be created or edited in one authenticated call.
+
+Each event also carries a read-only abm_occurrences object:
+
+* count   how many dates this event currently has
+* next    its next upcoming date (Y-m-d), or empty if it has none left
+* locked  true when the dates cannot be changed by editing abm_event_date
+
+locked is true for an event imported from another calendar: its dates were
+copied verbatim and it has no recurrence rule, so regenerating it would
+collapse it to a single date, and the plugin refuses. Writing abm_event_date to
+such an event succeeds and changes the displayed date strings, but the calendar
+keeps showing the imported dates. Give the event a recurrence rule to take over
+from the import, or delete and recreate it. Everything other than the dates --
+title, times, cost, categories, content, flyer -- edits normally.
+
+Check it before editing dates:
+
+  GET /wp-json/wp/v2/abm_event/<id>?_fields=id,abm_occurrences
+
+The object costs one database query per event and is only computed when asked
+for, so listing events with _fields that omit it is free.
+
 = Cornerstone Looper setup (events calendar page) =
 
 1. Add a Looper Provider element. Set Query Builder:
@@ -219,6 +245,17 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.6.0 =
+* REST: events carry a read-only abm_occurrences object ({count, next, locked}).
+  Since 2.4.0 an imported event's dates are protected from being regenerated,
+  but nothing in the REST representation said so: writing abm_event_date to one
+  returns 200, updates the meta and the display strings, and leaves the calendar
+  rendering the original dates. There was no field a client could check. There
+  is now.
+* stats_for() answers count, next date and lock state in a single query, and
+  is_protected_explicit() accepts a count the caller already has, so the new
+  field costs one query per event rather than three.
 
 = 2.5.0 =
 * Settings > Repeating Events > Generate Ahead: how far ahead an open-ended

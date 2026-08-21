@@ -36,6 +36,7 @@ class ABM_Meta {
 
 	private function __construct() {
 		add_action( 'init', array( $this, 'register_meta' ) );
+		add_action( 'rest_api_init', array( $this, 'register_rest_fields' ) );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
 		// custom-fields support is on purely for REST; the raw key/value panel it
 		// also switches on would just be a way to corrupt these fields by hand.
@@ -97,6 +98,48 @@ class ABM_Meta {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Expose read-only occurrence facts on an event's REST representation.
+	 *
+	 * Without this a REST client cannot tell that an imported event's dates are
+	 * locked. PATCHing abm_event_date on one returns 200, updates the meta and the
+	 * display strings, and leaves the calendar rendering the original imported
+	 * dates, because a verbatim set with no rule is deliberately never
+	 * regenerated. That silence is the entire reason this field exists.
+	 *
+	 * Read-only: no update_callback is registered, so it cannot be written.
+	 * Costs one query per event, and only when the field is actually requested --
+	 * core skips additional fields left out of ?_fields=.
+	 */
+	public function register_rest_fields() {
+		register_rest_field(
+			ABM_POST_TYPE,
+			'abm_occurrences',
+			array(
+				'get_callback' => array( $this, 'rest_occurrence_info' ),
+				'schema'       => array(
+					'description' => __( 'Read-only: how many dates this event has, its next upcoming date, and whether its dates are locked because they were imported verbatim.', 'arkon-bar-manager' ),
+					'type'        => 'object',
+					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
+					'properties'  => array(
+						'count'  => array( 'type' => 'integer' ),
+						'next'   => array( 'type' => 'string' ),
+						'locked' => array( 'type' => 'boolean' ),
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * @param array $post Prepared post response data.
+	 * @return array{count:int,next:string,locked:bool}
+	 */
+	public function rest_occurrence_info( $post ) {
+		return ABM_Occurrences::stats_for( isset( $post['id'] ) ? (int) $post['id'] : 0 );
 	}
 
 	/**

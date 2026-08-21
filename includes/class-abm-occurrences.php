@@ -375,10 +375,11 @@ class ABM_Occurrences {
 	 * True when the rows were written verbatim, there is no rule to rebuild
 	 * from, and there is more than one of them to lose.
 	 *
-	 * @param int $post_id Event ID.
+	 * @param int      $post_id     Event ID.
+	 * @param int|null $known_count Row count the caller already has, to save a query.
 	 * @return bool
 	 */
-	public static function is_protected_explicit( $post_id ) {
+	public static function is_protected_explicit( $post_id, $known_count = null ) {
 		if ( ! get_post_meta( $post_id, self::EXPLICIT_META, true ) ) {
 			return false;
 		}
@@ -386,6 +387,11 @@ class ABM_Occurrences {
 		$rule = self::get_rule( $post_id );
 		if ( '' !== $rule['type'] ) {
 			return false; // A rule was set; it takes precedence.
+		}
+
+		// stats_for() already counted; do not ask the database twice.
+		if ( null !== $known_count ) {
+			return (int) $known_count > 1;
 		}
 
 		global $wpdb;
@@ -700,6 +706,41 @@ class ABM_Occurrences {
 			)
 		);
 		return $date ? (string) $date : '';
+	}
+
+	/**
+	 * Row count, next upcoming date and lock state for one event, in one query.
+	 *
+	 * Exists so the REST representation of an event costs a single extra query
+	 * rather than three. The lock answer still comes from is_protected_explicit()
+	 * so there is only ever one definition of what "locked" means.
+	 *
+	 * @param int $post_id Event ID.
+	 * @return array{count:int,next:string,locked:bool}
+	 */
+	public static function stats_for( $post_id ) {
+		global $wpdb;
+
+		$post_id = (int) $post_id;
+		$table   = self::table();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT COUNT(*) AS n, MIN( CASE WHEN occur_date >= %s THEN occur_date END ) AS nxt
+				 FROM {$table} WHERE post_id = %d",
+				current_time( 'Y-m-d' ),
+				$post_id
+			)
+		);
+
+		$count = $row ? (int) $row->n : 0;
+
+		return array(
+			'count'  => $count,
+			'next'   => ( $row && $row->nxt ) ? (string) $row->nxt : '',
+			'locked' => self::is_protected_explicit( $post_id, $count ),
+		);
 	}
 
 	/**
