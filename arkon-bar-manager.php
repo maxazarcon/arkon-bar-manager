@@ -3,7 +3,7 @@
  * Plugin Name:       Arkon Event Manager
  * Plugin URI:        https://maxazarcon.com/
  * Description:       Bar event management. Create events with date, time (incl. "Close"), category and flyer, then surface them on the frontend via Themeco Pro/Cornerstone Looper + Dynamic Content, with per-event iCal and Google Calendar export.
- * Version:           2.0.0
+ * Version:           2.2.0
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Max Azarcon
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ABM_VERSION', '2.0.0' );
+define( 'ABM_VERSION', '2.2.0' );
 define( 'ABM_FILE', __FILE__ );
 define( 'ABM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ABM_URL', plugin_dir_url( __FILE__ ) );
@@ -37,6 +37,7 @@ require_once ABM_DIR . 'includes/class-abm-admin.php';
 require_once ABM_DIR . 'includes/class-abm-ical.php';
 require_once ABM_DIR . 'includes/class-abm-frontend.php';
 require_once ABM_DIR . 'includes/class-abm-calendar.php';
+require_once ABM_DIR . 'includes/class-abm-looper.php';
 require_once ABM_DIR . 'includes/class-abm-import.php';
 require_once ABM_DIR . 'includes/class-abm-mec-db.php';
 require_once ABM_DIR . 'includes/class-abm-tools.php';
@@ -52,6 +53,7 @@ function abm_init_plugin() {
 	ABM_Admin::instance();
 	ABM_Frontend::instance();
 	ABM_Calendar::instance();
+	ABM_Looper::instance();
 	ABM_Import::instance();
 	ABM_Tools::instance();
 }
