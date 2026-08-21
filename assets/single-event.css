@@ -15,13 +15,16 @@
 
    Recolour the accent with:
 
-     .abm-single { --abm-accent: #d6006e; }
+     .abm-single { --abm-accent: #ff129f; }
 
    If the theme later supplies its own single-abm_event.php, or a Cornerstone
    Single Layout is assigned to Event, neither this file nor the template loads. */
 
 .abm-single {
-	--abm-accent: #d6006e;
+	/* Same tokens as the calendar list, sampled from the live site: the brand
+	   pink off the active nav pill, and Cornerstone's own transition curve. */
+	--abm-accent: #ff129f;
+	--abm-ease: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	--abm-rule: rgba(128, 128, 128, 0.25);
 	--abm-hero-min: 420px;
 	--abm-hero-ink: #fff;
@@ -151,19 +154,27 @@
 	margin: 0 0 28px;
 }
 
+/* Matched to the calendar's "View Detail" button and to the site's own hover
+   move: a quiet bordered pill that fills with the brand pink, label going white. */
 .abm-single .abm-export a {
 	display: inline-block;
-	padding: 10px 18px;
-	border: 1px solid var(--abm-accent);
+	padding: 11px 18px;
+	border: 1px solid #e8e8e8;
 	border-radius: 4px;
+	background: #fff;
+	color: #767676;
 	text-decoration: none;
-	font-size: 0.9rem;
+	font-size: 11px;
+	letter-spacing: 1px;
+	text-transform: uppercase;
 	line-height: 1.4;
+	transition: background-color var(--abm-ease), color var(--abm-ease), border-color var(--abm-ease);
 }
 
 .abm-single .abm-export a:hover,
-.abm-single .abm-export a:focus {
+.abm-single .abm-export a:focus-visible {
 	background: var(--abm-accent);
+	border-color: var(--abm-accent);
 	color: #fff;
 }
 
@@ -215,10 +226,12 @@
 .abm-single-back a {
 	text-decoration: none;
 	font-size: 0.95rem;
+	transition: color var(--abm-ease);
 }
 
 .abm-single-back a:hover,
-.abm-single-back a:focus {
+.abm-single-back a:focus-visible {
+	color: var(--abm-accent);
 	text-decoration: underline;
 }
 

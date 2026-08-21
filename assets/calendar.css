@@ -1,8 +1,28 @@
 /* Arkon Event Manager — [abm_calendar] frontend list.
-   Fonts are inherited from the theme so it blends with Cornerstone/Pro.
-   Override --abm-accent to recolor the icons / Load More hover. */
+
+   Fonts are inherited from the theme so it blends with Cornerstone/Pro. The
+   values below are not invented: they were read off the live site so this list
+   sits alongside the rest of it rather than looking like a bolted-on plugin.
+
+     --abm-accent      #ff129f  the brand pink, sampled from the active nav pill
+                                and the "Follow on Instagram" button
+     --abm-ease        Cornerstone's own transition curve, used on every
+                       interactive element in the theme
+     --abm-card-radius 12px, matching the event cards the old calendar rendered
+
+   The hover treatment is deliberately the site's, not the old calendar's: menu
+   items there fill with the brand pink and their label goes white. The previous
+   calendar did the same move in near-black. Filling in pink keeps the behaviour
+   people liked while dropping a colour that belonged to the old plugin.
+
+   Recolour everything by overriding one property:
+
+     .abm-calendar { --abm-accent: #d6006e; } */
 .abm-calendar {
-	--abm-accent: #d6006e;
+	--abm-accent: #ff129f;
+	--abm-ease: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	--abm-card-radius: 12px;
+	--abm-card-border: #e9e9e9;
 	max-width: 100%;
 }
 
@@ -51,7 +71,7 @@
 	letter-spacing: 2px;
 	text-transform: uppercase;
 	line-height: 1.2;
-	transition: color 0.15s ease;
+	transition: color var(--abm-ease);
 }
 .abm-calendar .abm-month-toggle:hover {
 	color: var(--abm-accent);
@@ -86,10 +106,18 @@
 /* Event row */
 .abm-calendar .abm-event {
 	background: #fff;
-	border: 1px solid #ededed;
-	border-radius: 4px;
+	border: 1px solid var(--abm-card-border);
+	border-radius: var(--abm-card-radius);
 	margin-bottom: 14px;
 	overflow: hidden;
+	transition: border-color var(--abm-ease), box-shadow var(--abm-ease);
+}
+
+/* Lift the whole card on hover, so the row reads as one target rather than a
+   collection of separately hoverable links. */
+.abm-calendar .abm-event:hover {
+	border-color: #dcdcdc;
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
 }
 .abm-calendar .abm-event-main {
 	display: flex;
@@ -157,14 +185,26 @@
 	text-align: right;
 }
 .abm-calendar .abm-event-foot a {
+	display: inline-block;
+	padding: 8px 16px;
+	border: 1px solid #e8e8e8;
+	border-radius: 4px;
+	background: #fff;
 	font-size: 11px;
-	letter-spacing: 1.5px;
+	letter-spacing: 1px;
 	text-transform: uppercase;
-	color: #888;
+	color: #767676;
 	text-decoration: none;
+	transition: background-color var(--abm-ease), color var(--abm-ease), border-color var(--abm-ease);
 }
-.abm-calendar .abm-event-foot a:hover {
-	color: var(--abm-accent);
+
+/* Fills with the brand pink, label goes white — the same move the site's nav
+   makes, and the same shape the old calendar's "View Detail" button had. */
+.abm-calendar .abm-event-foot a:hover,
+.abm-calendar .abm-event-foot a:focus-visible {
+	background: var(--abm-accent);
+	border-color: var(--abm-accent);
+	color: #fff;
 }
 
 /* Load More */
@@ -182,11 +222,12 @@
 	text-transform: uppercase;
 	cursor: pointer;
 	color: #333;
-	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+	transition: background-color var(--abm-ease), color var(--abm-ease), border-color var(--abm-ease);
 }
-.abm-calendar .abm-load-more:hover {
+.abm-calendar .abm-load-more:hover,
+.abm-calendar .abm-load-more:focus-visible {
 	background: var(--abm-accent);
-	border-color: transparent;
+	border-color: var(--abm-accent);
 	color: #fff;
 }
 .abm-calendar .abm-load-more[disabled] {

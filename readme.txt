@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.7.2
+Stable tag: 2.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -250,6 +250,27 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.8.0 =
+* The calendar list and the event page now use the surrounding site's styling
+  rather than the plugin's own. The values were read off the live site, not
+  invented: the accent is the brand pink #ff129f, sampled from the active nav
+  pill and the "Follow on Instagram" button, and transitions use Cornerstone's
+  own curve, 0.3s cubic-bezier(0.4, 0, 0.2, 1).
+* "View Detail" is a real button again -- a quiet bordered pill that fills with
+  the brand pink and turns its label white on hover. That is the same move the
+  site's own navigation makes, and the same shape the previous calendar used, in
+  a colour that belongs to this site rather than to the old plugin.
+* The export buttons on the event page were given the identical treatment, so the
+  two screens agree.
+* Event cards lift on hover (border darkens, soft shadow) so a row reads as one
+  target instead of several separately hoverable links. Card corners went from
+  4px to 12px, matching the cards the previous calendar rendered.
+* New CSS custom properties for theming: --abm-ease, --abm-card-radius and
+  --abm-card-border alongside the existing --abm-accent. Overriding --abm-accent
+  still recolours everything in one line.
+* Behaviour change on upgrade: anything relying on the previous #d6006e accent or
+  the 4px card radius will look different. Nothing functional changed.
 
 = 2.7.2 =
 Fix only.
