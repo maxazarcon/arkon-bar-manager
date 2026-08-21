@@ -36,6 +36,8 @@ class ABM_Frontend {
 		add_action( 'init', array( __CLASS__, 'register_endpoint' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_output_ical' ) );
 		add_action( 'pre_get_posts', array( $this, 'order_archive' ) );
+		add_filter( 'single_template', array( $this, 'single_template' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_single_assets' ) );
 
 		add_shortcode( 'abm_event_date', array( $this, 'sc_date' ) );
 		add_shortcode( 'abm_event_time', array( $this, 'sc_time' ) );
@@ -122,6 +124,62 @@ class ABM_Frontend {
 		$clauses['orderby'] = 'abm_next.abm_next_date ASC, ' . $wpdb->posts . '.ID ASC';
 
 		return $clauses;
+	}
+
+	/* --------------------------------------------------------------------- */
+	/* Single event template                                                 */
+	/* --------------------------------------------------------------------- */
+
+	/**
+	 * Whether this plugin should supply the single-event template.
+	 *
+	 * A theme does not know this post type exists, so with no template of its
+	 * own it falls back to a generic layout. On the Themeco Pro install this was
+	 * built for, that fallback rendered the page shell and nothing else -- no
+	 * title, no date, no flyer. Since /event-archive/<slug>/ redirects to these
+	 * URLs and Instagram is the largest referrer, the most valuable inbound link
+	 * on the site landed on a blank page.
+	 *
+	 * Precedence, most specific first:
+	 *   1. A theme's own single-abm_event.php.
+	 *   2. A Pro / Cornerstone Single Layout assigned to this post type. Those
+	 *      hook later than this filter, so they take over on their own.
+	 *   3. This template.
+	 *   4. Nothing, when the operator turns it off in Settings.
+	 *
+	 * @return bool
+	 */
+	private function should_supply_template() {
+		if ( ! is_singular( ABM_POST_TYPE ) ) {
+			return false;
+		}
+		if ( ! abm_get_setting( 'single_template', 1 ) ) {
+			return false;
+		}
+		// A theme that has gone to the trouble of styling this post type wins.
+		return '' === (string) locate_template( array( 'single-' . ABM_POST_TYPE . '.php' ) );
+	}
+
+	/**
+	 * @param string $template Resolved template path.
+	 * @return string
+	 */
+	public function single_template( $template ) {
+		if ( ! $this->should_supply_template() ) {
+			return $template;
+		}
+		$own = ABM_DIR . 'templates/single-' . ABM_POST_TYPE . '.php';
+		return file_exists( $own ) ? $own : $template;
+	}
+
+	/**
+	 * Styles for the template above, loaded only when it is the one rendering.
+	 */
+	public function enqueue_single_assets() {
+		if ( ! $this->should_supply_template() ) {
+			return;
+		}
+		wp_enqueue_style( 'abm-single-event', ABM_URL . 'assets/single-event.css', array(), ABM_VERSION );
 	}
 
 	/* --------------------------------------------------------------------- */

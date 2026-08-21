@@ -709,6 +709,43 @@ class ABM_Occurrences {
 	}
 
 	/**
+	 * Upcoming occurrence rows for one event, soonest first.
+	 *
+	 * Used by the single-event template to list the other nights a repeating
+	 * event runs. Returns rows, not just dates, because the template renders a
+	 * time range per night and those live on the occurrence, not on the post.
+	 *
+	 * @param int    $post_id Event ID.
+	 * @param int    $limit   Maximum rows.
+	 * @param string $exclude Optional Y-m-d to leave out (the one being viewed).
+	 * @return array<int,object>
+	 */
+	public static function upcoming_for( $post_id, $limit = 12, $exclude = '' ) {
+		global $wpdb;
+
+		$table = self::table();
+		$args  = array( (int) $post_id, current_time( 'Y-m-d' ) );
+		$where = 'post_id = %d AND occur_date >= %s';
+
+		$exclude = abm_sanitize_date( $exclude );
+		if ( '' !== $exclude ) {
+			$where .= ' AND occur_date <> %s';
+			$args[] = $exclude;
+		}
+
+		$args[] = max( 1, min( 50, (int) $limit ) );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (array) $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT occur_date, start_time, end_time FROM {$table}
+				 WHERE {$where} ORDER BY occur_date ASC, start_time ASC LIMIT %d",
+				$args
+			)
+		);
+	}
+
+	/**
 	 * Row count, next upcoming date and lock state for one event, in one query.
 	 *
 	 * Exists so the REST representation of an event costs a single extra query

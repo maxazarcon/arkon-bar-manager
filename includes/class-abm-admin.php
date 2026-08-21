@@ -134,6 +134,7 @@ class ABM_Admin {
 		$out['calendar_initial']        = max( 1, absint( $input['calendar_initial'] ?? 10 ) );
 		$out['calendar_load_more']      = max( 1, absint( $input['calendar_load_more'] ?? 10 ) );
 		$out['calendar_show_categories'] = empty( $input['calendar_show_categories'] ) ? 0 : 1;
+		$out['single_template']          = empty( $input['single_template'] ) ? 0 : 1;
 
 		return $out;
 	}
@@ -154,6 +155,7 @@ class ABM_Admin {
 		$cal_initial     = (int) abm_get_setting( 'calendar_initial', 10 );
 		$cal_load_more   = (int) abm_get_setting( 'calendar_load_more', 10 );
 		$cal_show_cats   = (int) abm_get_setting( 'calendar_show_categories', 1 );
+		$single_template = (int) abm_get_setting( 'single_template', 1 );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Arkon Event Manager Settings', 'arkon-bar-manager' ); ?></h1>
@@ -207,6 +209,23 @@ class ABM_Admin {
 						<td>
 							<input type="text" class="regular-text" id="abm_venue_address" name="<?php echo esc_attr( ABM_SETTINGS ); ?>[venue_address]" value="<?php echo $venue_address; ?>" />
 							<p class="description"><?php esc_html_e( 'Added to the location field of calendar exports.', 'arkon-bar-manager' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Event Pages', 'arkon-bar-manager' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Event Page Template', 'arkon-bar-manager' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( ABM_SETTINGS ); ?>[single_template]" value="1" <?php checked( $single_template, 1 ); ?> />
+								<?php esc_html_e( 'Use the plugin’s own layout for single event pages', 'arkon-bar-manager' ); ?>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'Most themes have no layout for this post type and fall back to a generic one, which on some themes renders the page shell and nothing else -- no title, no date, no flyer. That matters because old /event-archive/ links redirect to these pages. With this on, the plugin supplies a plain layout showing the flyer, date, time, category, cover, description, export buttons and the event’s other upcoming dates.', 'arkon-bar-manager' ); ?><br />
+								<?php esc_html_e( 'A theme template named single-abm_event.php always wins over this, and a Cornerstone Single Layout assigned to Event takes over on its own. Turn this off if you build your own and it does not.', 'arkon-bar-manager' ); ?>
+							</p>
 						</td>
 					</tr>
 				</table>

@@ -1,0 +1,250 @@
+/* Arkon Event Manager — single event template.
+
+   Deliberately restrained. This template exists so the page is never blank when
+   the theme has no layout for the post type; it is a floor, not a design. It
+   inherits the theme's fonts wherever possible and only sets what it must.
+
+   Layout note. The theme this was built against uses an overlay header:
+   header.x-masthead collapses to zero height and the visible nav bar inside it
+   is positioned absolutely, so content laid out from the top of the document
+   renders underneath the navigation. Every other page on the site answers that
+   with a tall full-bleed hero band that the nav sits over, so this template does
+   the same rather than padding the content down. Adjust the band with:
+
+     .abm-single { --abm-hero-min: 420px; }
+
+   Recolour the accent with:
+
+     .abm-single { --abm-accent: #d6006e; }
+
+   If the theme later supplies its own single-abm_event.php, or a Cornerstone
+   Single Layout is assigned to Event, neither this file nor the template loads. */
+
+.abm-single {
+	--abm-accent: #d6006e;
+	--abm-rule: rgba(128, 128, 128, 0.25);
+	--abm-hero-min: 420px;
+	--abm-hero-ink: #fff;
+}
+
+/* Hero band ------------------------------------------------------------- */
+
+.abm-single-hero {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: var(--abm-hero-min);
+	padding: 140px 20px 60px; /* top clears the overlay nav */
+	box-sizing: border-box;
+	text-align: center;
+	background-color: #1a1013;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+/* Darkening wash, so the title stays legible over any flyer. */
+.abm-single-hero.has-bg::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgba(20, 12, 15, 0.72);
+}
+
+.abm-single-hero-inner {
+	position: relative; /* above the wash */
+	max-width: 900px;
+	width: 100%;
+}
+
+.abm-single-title {
+	margin: 0;
+	line-height: 1.12;
+	color: var(--abm-hero-ink);
+}
+
+.abm-single-hero-date {
+	margin: 14px 0 0;
+	color: var(--abm-hero-ink);
+	opacity: 0.92;
+	font-size: 1.05rem;
+}
+
+.abm-single-hero-sep {
+	opacity: 0.55;
+	padding: 0 4px;
+}
+
+/* Body ------------------------------------------------------------------ */
+
+.abm-single-inner {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 48px 20px 64px;
+	box-sizing: border-box;
+}
+
+.abm-single-body {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 32px;
+	align-items: flex-start;
+}
+
+.abm-single-flyer {
+	flex: 0 1 380px;
+	min-width: 0;
+}
+
+.abm-single-flyer img {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: 6px;
+}
+
+.abm-single-detail {
+	flex: 1 1 320px;
+	min-width: 0;
+}
+
+/* Meta list ------------------------------------------------------------- */
+
+.abm-single-meta {
+	list-style: none;
+	margin: 0 0 24px;
+	padding: 0;
+}
+
+.abm-single-meta li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	padding: 10px 0;
+	border-bottom: 1px solid var(--abm-rule);
+	margin: 0;
+}
+
+.abm-single-label {
+	flex: 0 0 88px;
+	font-size: 0.75rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	opacity: 0.65;
+	line-height: 1.9;
+}
+
+.abm-single-value {
+	flex: 1 1 160px;
+	min-width: 0;
+	font-size: 1.05rem;
+	font-weight: 600;
+}
+
+/* Export buttons (from [abm_event_export]) ------------------------------ */
+
+.abm-single .abm-export {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0 0 28px;
+}
+
+.abm-single .abm-export a {
+	display: inline-block;
+	padding: 10px 18px;
+	border: 1px solid var(--abm-accent);
+	border-radius: 4px;
+	text-decoration: none;
+	font-size: 0.9rem;
+	line-height: 1.4;
+}
+
+.abm-single .abm-export a:hover,
+.abm-single .abm-export a:focus {
+	background: var(--abm-accent);
+	color: #fff;
+}
+
+/* Other dates ----------------------------------------------------------- */
+
+.abm-single-upcoming h2 {
+	font-size: 0.8rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	opacity: 0.65;
+	margin: 0 0 10px;
+}
+
+.abm-single-upcoming ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	/* A weekly night can list many dates; keep it from running the page long. */
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.abm-single-upcoming li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	padding: 7px 0;
+	border-bottom: 1px solid var(--abm-rule);
+	margin: 0;
+}
+
+.abm-single-upcoming-time {
+	opacity: 0.7;
+	font-size: 0.9rem;
+}
+
+/* Content and footer ---------------------------------------------------- */
+
+.abm-single-content {
+	margin: 36px 0 0;
+	padding-top: 28px;
+	border-top: 1px solid var(--abm-rule);
+}
+
+.abm-single-back {
+	margin: 40px 0 0;
+}
+
+.abm-single-back a {
+	text-decoration: none;
+	font-size: 0.95rem;
+}
+
+.abm-single-back a:hover,
+.abm-single-back a:focus {
+	text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+	.abm-single {
+		--abm-hero-min: 300px;
+	}
+
+	.abm-single-hero {
+		padding: 110px 16px 40px;
+	}
+
+	.abm-single-inner {
+		padding: 32px 16px 44px;
+	}
+
+	.abm-single-body {
+		gap: 24px;
+	}
+
+	.abm-single-flyer {
+		flex-basis: 100%;
+	}
+
+	.abm-single-label {
+		flex-basis: 100%;
+		line-height: 1.4;
+	}
+}

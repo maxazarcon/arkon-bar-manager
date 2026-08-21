@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.6.1
+Stable tag: 2.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -144,6 +144,11 @@ Each published event gets its own page at /music-and-events/event-title/ (the
 same base as the calendar page; the post type has no separate archive so the
 /music-and-events/ page itself keeps resolving normally).
 
+That page is rendered by the plugin's own template unless the theme provides
+one. See Settings > Event Pages. For a repeating event the page shows the date
+that was clicked, resolved from the ?occ= parameter and validated against the
+event's real dates, plus a list of its other upcoming nights.
+
 = Frontend meta keys (Cornerstone Dynamic Content) =
 
 Reference these inside a Looper Consumer with {{dc:post:meta key="..."}}:
@@ -245,6 +250,46 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.7.1 =
+Fix only.
+* The single event template rendered its content underneath the site navigation.
+  The theme this was built against uses an overlay header: header.x-masthead
+  collapses to zero height and the visible nav bar inside it is positioned
+  absolutely, 100px tall, so content laid out from the top of the document sits
+  beneath it. 2.7.0 laid out from the top and the event title collided with the
+  menu.
+  The template now opens with a full-bleed title band carrying the event name,
+  date and time, which is how every other page on this site clears that header.
+  The band uses the event flyer as a darkened background when there is one.
+* The tuning knob for this changed name with the approach: --abm-single-offset
+  (a padding value) is gone, replaced by --abm-hero-min (the band's minimum
+  height). Both are new in the 2.7.x line, so nothing that existed before can
+  have depended on either.
+
+= 2.7.0 =
+**Superseded by 2.7.1 on the same day; see the note at the end of this entry.**
+
+* Single event pages now render. A theme with no layout for this post type falls
+  back to a generic one; on Themeco Pro that produced the page shell and nothing
+  else -- no title, no date, no flyer, no description. Measured on staging: 613
+  visible characters, all header and footer chrome, and the event title absent
+  from the DOM entirely. This matters more than it sounds, because
+  /event-archive/<slug>/ redirects land on exactly these pages.
+  The plugin now supplies templates/single-abm_event.php showing the flyer, the
+  date of the occurrence being viewed, the time range, category, cover,
+  description, Google Calendar and iCal buttons, and -- for a repeating event --
+  its other upcoming dates, each linking to its own night.
+* Settings > Event Pages > Event Page Template switches it off. A theme file named
+  single-abm_event.php always wins over it, and a Cornerstone Single Layout
+  assigned to Event hooks later and takes over on its own.
+* New: ABM_Occurrences::upcoming_for() returns an event's next dates, one query.
+
+  Note on this release: two materially different builds were stamped 2.7.0 during
+  development, and the second overwrote the first as arkon-bar-manager-2.7.0.zip.
+  The build that reached a server had the header-overlap defect described under
+  2.7.1. No artifact stamped 2.7.0 should be trusted to be a particular build;
+  use 2.7.1 or later.
 
 = 2.6.1 =
 * The "Rebuild occurrences" notice no longer reads as a data-loss report. On a
