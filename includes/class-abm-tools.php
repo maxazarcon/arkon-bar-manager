@@ -109,17 +109,37 @@ class ABM_Tools {
 			<h1><?php esc_html_e( 'Migrate & Tools', 'arkon-bar-manager' ); ?></h1>
 
 			<?php if ( null !== $rebuilt ) : ?>
-				<div class="notice notice-success"><p>
-					<?php
-					printf(
-						/* translators: 1: event count, 2: occurrence row count, 3: protected count. */
-						esc_html__( 'Rebuilt occurrences for %1$s events, producing %2$s dates. %3$s imported events kept their original dates.', 'arkon-bar-manager' ),
-						'<strong>' . esc_html( number_format_i18n( $rebuilt['events'] ) ) . '</strong>',
-						'<strong>' . esc_html( number_format_i18n( $rebuilt['rows'] ) ) . '</strong>',
-						'<strong>' . esc_html( number_format_i18n( $rebuilt['protected'] ?? 0 ) ) . '</strong>'
-					);
-					?>
-				</p></div>
+				<div class="notice notice-success">
+					<p>
+						<?php
+						printf(
+							/* translators: 1: event count, 2: occurrence row count. */
+							esc_html__( 'Rebuilt occurrences for %1$s events, producing %2$s dates.', 'arkon-bar-manager' ),
+							'<strong>' . esc_html( number_format_i18n( $rebuilt['events'] ) ) . '</strong>',
+							'<strong>' . esc_html( number_format_i18n( $rebuilt['rows'] ) ) . '</strong>'
+						);
+						?>
+					</p>
+					<?php if ( ! empty( $rebuilt['protected'] ) ) : ?>
+					<p>
+						<?php
+						printf(
+							/* translators: %s: number of imported events holding more than one date. */
+							esc_html(
+								_n(
+									'%s imported event holds more than one date, so it was left exactly as it is.',
+									'%s imported events hold more than one date, so they were left exactly as they are.',
+									(int) $rebuilt['protected'],
+									'arkon-bar-manager'
+								)
+							),
+							'<strong>' . esc_html( number_format_i18n( $rebuilt['protected'] ) ) . '</strong>'
+						);
+						?>
+						<br /><span class="description"><?php esc_html_e( 'This is not a count of what survived. Every other event was regenerated normally: one with a recurrence rule re-expands from that rule, and a single-date event regenerates to the same single date. To confirm nothing was lost, check the figure above against "Occurrences currently stored" below.', 'arkon-bar-manager' ); ?></span>
+					</p>
+					<?php endif; ?>
+				</div>
 			<?php endif; ?>
 
 			<?php if ( $report ) : ?>

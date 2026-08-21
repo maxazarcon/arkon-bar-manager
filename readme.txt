@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 2.6.0
+Stable tag: 2.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -245,6 +245,15 @@ Use inside a Looper Consumer (they read the current event), or pass id="123":
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.6.1 =
+* The "Rebuild occurrences" notice no longer reads as a data-loss report. On a
+  site with 337 imported events it said "3 imported events kept their original
+  dates", which invites the conclusion that 334 lost theirs. Only an event
+  holding more than one date needs protecting -- a single-date event
+  regenerates to the same date -- so 3 was both correct and alarming. The
+  notice now explains what the number counts and points at the stored total as
+  the check. Verified against the real 337-event migration on staging.
 
 = 2.6.0 =
 * REST: events carry a read-only abm_occurrences object ({count, next, locked}).
