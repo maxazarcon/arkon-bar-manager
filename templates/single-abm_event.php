@@ -110,19 +110,31 @@ while ( have_posts() ) :
 					</div>
 				<?php endif; ?>
 
-				<div class="abm-single-detail">
+				<?php
+				/*
+				 * Source order is flyer, title, description, details -- which is the
+				 * phone layout, and is also the order the page reads best in: the
+				 * heading comes before the content it heads, and the meta list comes
+				 * after the prose rather than interrupting it. On a wide screen CSS
+				 * `order` lifts the details up beside the flyer.
+				 *
+				 * A page has one DOM order and two layouts want different ones, so on
+				 * a wide screen the reading order and the visual order differ by one
+				 * block. That is the deliberate trade: the sequence is coherent read
+				 * either way, and putting the details first in the source instead
+				 * would make a screen reader recite the cover charge before saying
+				 * what the event is.
+				 */
+				?>
+				<h2 class="abm-single-heading"><?php the_title(); ?></h2>
 
-					<?php
-					/*
-					 * The plain heading opens the details column rather than sitting
-					 * beside it as a fourth block in the flex row. As a sibling it had
-					 * to be full-width to read properly, which broke the row and pushed
-					 * the whole meta list underneath the flyer instead of alongside it.
-					 * Inside the column it is simply the first thing in it, at every
-					 * width, and the description still follows it down the page.
-					 */
-					?>
-					<h2 class="abm-single-heading"><?php the_title(); ?></h2>
+				<?php if ( $abm_has_desc ) : ?>
+					<div class="abm-single-content entry-content">
+						<?php the_content(); ?>
+					</div>
+				<?php endif; ?>
+
+				<div class="abm-single-detail">
 
 					<ul class="abm-single-meta">
 						<?php if ( $abm_date_display ) : ?>
@@ -181,18 +193,6 @@ while ( have_posts() ) :
 						</div>
 					<?php endif; ?>
 				</div>
-
-				<?php
-				/*
-				 * The description is a sibling of the two columns, full-width beneath
-				 * them, so a long lineup is not squeezed into the narrow one.
-				 */
-				?>
-				<?php if ( $abm_has_desc ) : ?>
-					<div class="abm-single-content entry-content">
-						<?php the_content(); ?>
-					</div>
-				<?php endif; ?>
 			</div>
 
 			<p class="abm-single-back">

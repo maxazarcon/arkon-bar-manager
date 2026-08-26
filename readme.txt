@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.14.0
+Stable tag: 2.14.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -303,6 +303,17 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.14.1 =
+Fix only.
+* The event page lays out as intended. On a wide screen the flyer and the details
+  share the top row, with the plain title and then the description full-width
+  beneath them; on a phone the order is flyer, title, description, details, so
+  the visitor reads what the event is before the meta list.
+* Source order is the phone order, which is also the order the page reads best
+  in, and the wide screen lifts the details with CSS rather than the markup
+  changing. The stacking width and the reordering width are the same number, so
+  there is no band where one has happened and the other has not.
 
 = 2.14.0 =
 * Repeating events export as repeating events. "Download iCal" and "Add to

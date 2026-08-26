@@ -103,22 +103,27 @@
 .abm-single-body {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 32px;
+	column-gap: 32px;
+	/* Vertical spacing is set by margins below rather than by a row gap. The
+	   title and the description are a pair and want to sit close together, while
+	   the break above the title wants to be wider than that -- one row-gap
+	   cannot be both. */
+	row-gap: 0;
 	align-items: flex-start;
 }
 
-/* Three blocks in one flex container, placed by source order alone.
+/* Four blocks in one flex container.
 
-   Wide screen:  [ flyer | details ]   description full-width beneath.
-   Phone:        flyer, details, description — one column.
+   Wide screen:  [ flyer | details ]   then title, then description, full-width.
+   Phone:        flyer, title, description, details — one column.
 
-   The plain heading sits *inside* the details column rather than beside it, so
-   it introduces the meta list at every width and needs no rules to place it.
-   An earlier arrangement made it a fourth flex sibling moved around by `order`,
-   which is where every layout bug this file has had came from: the sibling was
-   full-width, so it broke the row and stranded the details underneath it, and
-   the `order` values then had to be kept in step with the breakpoints by hand. */
+   Source order is the phone order; the wide screen lifts the details up with
+   `order`. Both flips happen at the same 800px threshold, which is the point:
+   the one layout bug this file keeps producing is a band of widths where the
+   columns have stacked but the blocks have not been reordered to match, and
+   that can only happen if the two are tied to different numbers. */
 .abm-single-flyer {
+	order: 1;
 	flex: 0 1 380px;
 	min-width: 0;
 }
@@ -131,6 +136,7 @@
 }
 
 .abm-single-detail {
+	order: 2;
 	flex: 1 1 320px;
 	min-width: 0;
 }
@@ -138,9 +144,11 @@
 /* Plain, readable restatement of the title — body face, not the hero script. The
    hero sets the title in a script face over a darkened flyer, which is handsome
    and not especially easy to read; this is the legible copy, and it heads the
-   details it belongs to. */
+   description. */
 .abm-single-heading {
-	margin: 0 0 14px;
+	order: 3;
+	flex: 1 0 100%;
+	margin: 34px 0 12px;
 	color: var(--abm-ink);
 	font-size: clamp(1.3rem, 1.05rem + 0.8vw, 1.7rem);
 	line-height: 1.25;
@@ -268,8 +276,9 @@
    set as a readable paragraph rather than boxed and labelled the way the old
    calendar did it. Measure capped so it stays comfortable on a wide screen. */
 .abm-single-content {
+	order: 4;
 	flex: 1 0 100%;
-	margin: 12px 0 0;
+	margin: 0;
 	max-width: 68ch;
 	color: var(--abm-ink);
 	font-size: 1.05rem;
@@ -348,12 +357,31 @@
 
    Flyer (380) + gap (32) + details (320) = 732px of content, so the columns stop
    fitting at roughly a 772px viewport; 800px leaves a little slack over the
-   arithmetic. Nothing else has to change here — the heading rides inside the
-   details column, so stacking moves it along with the meta list rather than
-   leaving the two to be reordered separately. */
+   arithmetic. The stack and the reorder are deliberately the same number: the
+   recurring bug in this file is a band of widths where one has happened and the
+   other has not.
+
+   Below it everything returns to source order, which is what the phone layout
+   wants — flyer, title, description, details. */
 @media (max-width: 800px) {
 	.abm-single-flyer {
 		flex: 0 1 100%;
+		order: 1;
+	}
+
+	.abm-single-heading {
+		order: 2;
+		margin: 28px 0 12px;
+	}
+
+	.abm-single-content {
+		order: 3;
+	}
+
+	.abm-single-detail {
+		order: 4;
+		/* Its own spacing, since the description above it has none of its own. */
+		margin-top: 32px;
 	}
 }
 
