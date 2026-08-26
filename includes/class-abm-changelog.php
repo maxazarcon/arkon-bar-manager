@@ -55,6 +55,147 @@ class ABM_Changelog {
 	}
 
 	/**
+	 * The raw body of a "== Name ==" section of readme.txt, or ''.
+	 *
+	 * @param string $name Section name, e.g. 'Description'.
+	 * @return string
+	 */
+	public static function section( $name ) {
+		$raw = self::readme();
+		if ( '' === $raw ) {
+			return '';
+		}
+
+		$pattern = '/^==\s*' . preg_quote( (string) $name, '/' ) . '\s*==\s*$(.*?)(?=^==\s|\z)/ms';
+		if ( ! preg_match( $pattern, $raw, $m ) ) {
+			return '';
+		}
+
+		return trim( $m[1] );
+	}
+
+	/**
+	 * A "Key: value" line from readme.txt's header block, or ''.
+	 *
+	 * readme.txt carries a few values the plugin header does not -- "Tested up
+	 * to" in particular, which is not a header WordPress recognises, so reading
+	 * it from $plugin_data yields nothing.
+	 *
+	 * @param string $name Header name.
+	 * @return string
+	 */
+	public static function header( $name ) {
+		$raw = self::readme();
+		if ( '' === $raw ) {
+			return '';
+		}
+
+		// Only the block above the first section heading.
+		$head = preg_split( '/^==\s/m', $raw );
+		$head = isset( $head[0] ) ? $head[0] : '';
+
+		if ( ! preg_match( '/^' . preg_quote( (string) $name, '/' ) . '\s*:\s*(.+)$/mi', $head, $m ) ) {
+			return '';
+		}
+
+		return trim( $m[1] );
+	}
+
+	/**
+	 * readme.txt in full, or '' if it cannot be read.
+	 *
+	 * @return string
+	 */
+	private static function readme() {
+		$path = self::readme_path();
+		if ( ! is_readable( $path ) ) {
+			return '';
+		}
+		$raw = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading a file shipped inside this plugin.
+		return false === $raw ? '' : $raw;
+	}
+
+	/**
+	 * Render readme.txt markup as the small subset of HTML the plugin-details
+	 * modal displays: headings, paragraphs, lists, bold and code.
+	 *
+	 * Everything is escaped before any markup is added, so readme.txt cannot
+	 * inject HTML into the modal.
+	 *
+	 * @param string $text Raw section body.
+	 * @return string
+	 */
+	public static function to_html( $text ) {
+		$lines = preg_split( '/\R/', trim( (string) $text ) );
+		$out   = '';
+		$para  = array();
+		$items = array();
+
+		$flush = static function () use ( &$para, &$items, &$out ) {
+			if ( $para ) {
+				$out .= '<p>' . self::inline( implode( ' ', $para ) ) . '</p>';
+				$para = array();
+			}
+			if ( $items ) {
+				$out .= '<ul>';
+				foreach ( $items as $item ) {
+					$out .= '<li>' . self::inline( $item ) . '</li>';
+				}
+				$out  .= '</ul>';
+				$items = array();
+			}
+		};
+
+		foreach ( $lines as $line ) {
+			$trimmed = trim( $line );
+
+			if ( '' === $trimmed ) {
+				$flush();
+				continue;
+			}
+
+			if ( preg_match( '/^=\s*(.+?)\s*=$/', $trimmed, $m ) ) {
+				$flush();
+				$out .= '<h4>' . self::inline( $m[1] ) . '</h4>';
+				continue;
+			}
+
+			if ( '*' === substr( $trimmed, 0, 1 ) ) {
+				if ( $para ) {
+					$flush();
+				}
+				$items[] = trim( substr( $trimmed, 1 ) );
+				continue;
+			}
+
+			// A line under an open bullet continues it; readme.txt wraps them.
+			if ( $items ) {
+				$items[ count( $items ) - 1 ] .= ' ' . $trimmed;
+				continue;
+			}
+
+			$para[] = $trimmed;
+		}
+
+		$flush();
+
+		return $out;
+	}
+
+	/**
+	 * Escape, then apply the inline markup readme.txt uses.
+	 *
+	 * @param string $text Raw text.
+	 * @return string
+	 */
+	private static function inline( $text ) {
+		$text = esc_html( (string) $text );
+		$text = preg_replace( '/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text );
+		$text = preg_replace( '/`(.+?)`/', '<code>$1</code>', $text );
+		return $text;
+	}
+
+	/**
 	 * Parse the "== Changelog ==" section of readme.txt.
 	 *
 	 * Returns entries in file order, which the convention keeps newest first.
@@ -70,22 +211,12 @@ class ABM_Changelog {
 			'entries' => array(),
 		);
 
-		$path = self::readme_path();
-		if ( ! is_readable( $path ) ) {
+		$body = self::section( 'Changelog' );
+		if ( '' === $body ) {
 			return $out;
 		}
 
-		$raw = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading a file shipped inside this plugin.
-		if ( false === $raw ) {
-			return $out;
-		}
-
-		// Isolate the changelog section: from its heading to the next "== " heading.
-		if ( ! preg_match( '/^==\s*Changelog\s*==\s*$(.*?)(?=^==\s|\z)/ms', $raw, $m ) ) {
-			return $out;
-		}
-
-		$lines   = preg_split( '/\R/', trim( $m[1] ) );
+		$lines   = preg_split( '/\R/', $body );
 		$current = null;
 
 		foreach ( $lines as $line ) {

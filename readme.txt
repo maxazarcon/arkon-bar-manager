@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.14.1
+Stable tag: 2.15.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -303,6 +303,22 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.15.0 =
+* "View details" on the Plugins screen opens a real details modal instead of
+  reading "Plugin not found". That link asks the wordpress.org API about the
+  plugin's slug, and a self-hosted plugin is not there, so the request 404s. The
+  plugin now answers for its own slug and leaves every other plugin alone.
+* The modal's content is read from readme.txt and the current GitHub release, so
+  it cannot drift from what shipped -- the same reason the Changelog screen is
+  rendered from readme.txt rather than a second copy in code.
+* "View details" is now present whether or not an update is pending. WordPress
+  only shows the link for a plugin it holds a slug for, and it takes that slug
+  from the update check, so previously the link appeared only while an update
+  was waiting.
+* Fix: "Tested up to" was read from the plugin headers, which never carry it --
+  WordPress does not recognise that header, so the value reported with an update
+  was always empty. It comes from readme.txt now.
 
 = 2.14.1 =
 Fix only.

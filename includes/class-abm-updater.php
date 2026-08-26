@@ -37,12 +37,26 @@ class ABM_Updater {
 	private function __construct() {
 		add_filter( 'update_plugins_github.com', array( __CLASS__, 'check_for_update' ), 10, 3 );
 
+		// "View details" on the Plugins screen opens a modal that asks the
+		// wordpress.org API about this slug. Nothing self-hosted is there, so
+		// without this the modal reads "Plugin not found." See below.
+		add_filter( 'plugins_api', array( __CLASS__, 'plugin_information' ), 10, 3 );
+
 		// A GitHub source archive unpacks to "name-1.2.3", not "arkon-bar-manager".
 		// WordPress would then install it alongside the real plugin as a second
 		// copy rather than updating it. Rename the extracted folder first.
 		add_filter( 'upgrader_source_selection', array( __CLASS__, 'fix_source_folder' ), 10, 4 );
 
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'flush_cache' ), 10, 0 );
+	}
+
+	/**
+	 * The plugin's directory name, which is the slug WordPress addresses it by.
+	 *
+	 * @return string
+	 */
+	public static function slug() {
+		return dirname( plugin_basename( ABM_FILE ) );
 	}
 
 	/**
@@ -125,10 +139,11 @@ class ABM_Updater {
 		}
 
 		$release = array(
-			'version' => ltrim( (string) $body['tag_name'], 'vV' ),
-			'package' => $package,
-			'url'     => ! empty( $body['html_url'] ) ? (string) $body['html_url'] : 'https://github.com/' . $repo,
-			'notes'   => ! empty( $body['body'] ) ? (string) $body['body'] : '',
+			'version'   => ltrim( (string) $body['tag_name'], 'vV' ),
+			'package'   => $package,
+			'url'       => ! empty( $body['html_url'] ) ? (string) $body['html_url'] : 'https://github.com/' . $repo,
+			'notes'     => ! empty( $body['body'] ) ? (string) $body['body'] : '',
+			'published' => ! empty( $body['published_at'] ) ? (string) $body['published_at'] : '',
 		);
 
 		set_transient( self::TRANSIENT, $release, self::CACHE_HOURS * HOUR_IN_SECONDS );
@@ -164,20 +179,117 @@ class ABM_Updater {
 			return $update;
 		}
 
-		if ( ! version_compare( $release['version'], ABM_VERSION, '>' ) ) {
-			return $update;
-		}
-
+		/*
+		 * Returned whether or not it is newer, and core decides which list it
+		 * belongs in: newer goes to the update transient's `response`, anything
+		 * else to `no_update`. Both matter. The Plugins screen only renders a
+		 * "View details" link for a plugin it holds a slug for, and it reads that
+		 * slug from one of those two lists -- so returning nothing when the
+		 * plugin is current is what makes the link appear only while an update is
+		 * pending, which is a confusing place for it to live.
+		 */
 		return array(
 			'id'           => 'github.com/' . self::repo(),
-			'slug'         => dirname( $plugin_file ),
+			'slug'         => self::slug(),
 			'plugin'       => $plugin_file,
 			'version'      => $release['version'],
 			'url'          => $release['url'],
 			'package'      => $release['package'],
-			'tested'       => isset( $plugin_data['Tested up to'] ) ? $plugin_data['Tested up to'] : '',
+			// "Tested up to" is not a header WordPress reads, so $plugin_data
+			// never carries it however it is spelled. readme.txt is where it is.
+			'tested'       => ABM_Changelog::header( 'Tested up to' ),
+			'requires'     => isset( $plugin_data['RequiresWP'] ) ? $plugin_data['RequiresWP'] : '',
 			'requires_php' => isset( $plugin_data['RequiresPHP'] ) ? $plugin_data['RequiresPHP'] : '',
 		);
+	}
+
+	/**
+	 * Answer the plugin-details modal for this plugin.
+	 *
+	 * "View details" on the Plugins screen opens plugin-install.php in a
+	 * thickbox, which calls plugins_api() -- and plugins_api() asks
+	 * api.wordpress.org. A self-hosted plugin is not there, so the request 404s
+	 * and the modal renders "Plugin not found."
+	 *
+	 * That is not a limitation of hosting updates yourself; the API call is just
+	 * a filterable default. Returning an object here short-circuits it, and the
+	 * modal renders whatever is provided. The content comes from readme.txt and
+	 * the GitHub release, so there is no third copy of it to keep current.
+	 *
+	 * The filter must return $result untouched for every other plugin, or this
+	 * would answer for the whole site.
+	 *
+	 * @param false|object|array $result The result object or array. Default false.
+	 * @param string             $action The API action being performed.
+	 * @param object             $args   Arguments for the request.
+	 * @return false|object|array
+	 */
+	public static function plugin_information( $result, $action, $args ) {
+		if ( 'plugin_information' !== $action ) {
+			return $result;
+		}
+		if ( empty( $args->slug ) || self::slug() !== $args->slug ) {
+			return $result;
+		}
+
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$plugin = get_plugin_data( ABM_FILE, false, false );
+
+		$release = self::latest_release();
+
+		// Modal tab => readme.txt section. Missing sections are skipped, so this
+		// does not have to match any particular readme.
+		$sections = array();
+		foreach ( array(
+			'description'  => 'Description',
+			'installation' => 'Installation',
+			'updates'      => 'Updates',
+			'notes'        => 'Notes',
+			'changelog'    => 'Changelog',
+		) as $tab => $heading ) {
+			$body = ABM_Changelog::to_html( ABM_Changelog::section( $heading ) );
+			if ( '' !== $body ) {
+				$sections[ $tab ] = $body;
+			}
+		}
+
+		$package = ( $release && '' !== $release['package'] ) ? $release['package'] : '';
+
+		/*
+		 * The newest release, unless what is installed is newer than it. That
+		 * happens whenever a build is installed before its release is published,
+		 * and it would otherwise make the modal report a version older than the
+		 * one the reader is running -- which reads as the plugin having been
+		 * downgraded behind their back.
+		 */
+		$latest  = ( $release && ! empty( $release['version'] ) ) ? $release['version'] : '';
+		$version = ( '' !== $latest && version_compare( $latest, ABM_VERSION, '>' ) ) ? $latest : ABM_VERSION;
+
+		$information = array(
+			'name'             => $plugin['Name'],
+			'slug'             => self::slug(),
+			'version'          => $version,
+			'author'           => $plugin['Author'],
+			'author_profile'   => $plugin['AuthorURI'],
+			'homepage'         => $plugin['PluginURI'],
+			'requires'         => $plugin['RequiresWP'],
+			'requires_php'     => $plugin['RequiresPHP'],
+			'tested'           => ABM_Changelog::header( 'Tested up to' ),
+			'short_description' => $plugin['Description'],
+			'download_link'    => $package,
+			'sections'         => $sections,
+		);
+
+		// Ratings and install counts do not exist for a plugin that is not on
+		// wordpress.org. Left unset rather than faked; the modal omits those
+		// panels rather than showing zeroes.
+		if ( $release && ! empty( $release['published'] ) ) {
+			$information['last_updated'] = $release['published'];
+		}
+
+		return (object) $information;
 	}
 
 	/**
