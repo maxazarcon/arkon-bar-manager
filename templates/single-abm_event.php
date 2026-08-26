@@ -35,9 +35,16 @@ while ( have_posts() ) :
 	$abm_flyer_id  = absint( get_post_meta( $abm_id, 'abm_flyer_id', true ) );
 	$abm_flyer_url = abm_resolve_flyer_url( $abm_id, $abm_flyer_id, 'large' );
 
-	$abm_cost  = (string) get_post_meta( $abm_id, 'abm_cost_display', true );
-	$abm_terms = get_the_terms( $abm_id, ABM_TAXONOMY );
-	$abm_cats  = ( $abm_terms && ! is_wp_error( $abm_terms ) ) ? wp_list_pluck( $abm_terms, 'name' ) : array();
+	$abm_cost = (string) get_post_meta( $abm_id, 'abm_cost_display', true );
+
+	// Categories obey the same switch as the calendar list: the per-event
+	// "Category Tag" override first, falling back to the global setting. Showing
+	// them here while the calendar hides them would make the setting look broken.
+	$abm_cats = array();
+	if ( abm_show_category_for( $abm_id ) ) {
+		$abm_terms = get_the_terms( $abm_id, ABM_TAXONOMY );
+		$abm_cats  = ( $abm_terms && ! is_wp_error( $abm_terms ) ) ? wp_list_pluck( $abm_terms, 'name' ) : array();
+	}
 
 	$abm_time_display = abm_format_time_range( $abm_start, $abm_end );
 	$abm_date_display = abm_format_date( $abm_date, 'l, F jS, Y' );
@@ -47,12 +54,11 @@ while ( have_posts() ) :
 	$abm_upcoming = ABM_Occurrences::upcoming_for( $abm_id, 12, $abm_date );
 
 	// The hero sets the title in the theme's script face over a darkened flyer,
-	// which is handsome and not especially easy to read. A plain restatement in
-	// the body carries the legibility. Where it sits depends on whether there is
-	// a description for it to head -- see the CSS.
+	// which is handsome and not especially easy to read. A plain restatement at
+	// the top of the details column carries the legibility.
 	$abm_has_desc = '' !== trim( (string) get_the_content() );
 	?>
-	<div class="abm-single<?php echo $abm_has_desc ? ' has-description' : ''; ?>">
+	<div class="abm-single">
 		<article id="post-<?php the_ID(); ?>" <?php post_class( 'abm-single-event' ); ?>>
 
 			<?php
@@ -105,6 +111,18 @@ while ( have_posts() ) :
 				<?php endif; ?>
 
 				<div class="abm-single-detail">
+
+					<?php
+					/*
+					 * The plain heading opens the details column rather than sitting
+					 * beside it as a fourth block in the flex row. As a sibling it had
+					 * to be full-width to read properly, which broke the row and pushed
+					 * the whole meta list underneath the flyer instead of alongside it.
+					 * Inside the column it is simply the first thing in it, at every
+					 * width, and the description still follows it down the page.
+					 */
+					?>
+					<h2 class="abm-single-heading"><?php the_title(); ?></h2>
 
 					<ul class="abm-single-meta">
 						<?php if ( $abm_date_display ) : ?>
@@ -166,16 +184,10 @@ while ( have_posts() ) :
 
 				<?php
 				/*
-				 * Heading and description live inside .abm-single-body so all four blocks
-				 * are siblings in one flex container and CSS `order` alone can place them:
-				 * on a wide screen the flyer and details share a row and the heading
-				 * introduces the description beneath; on a phone everything stacks and the
-				 * heading rises above the details. One element, no duplication, nothing
-				 * hidden from assistive technology.
+				 * The description is a sibling of the two columns, full-width beneath
+				 * them, so a long lineup is not squeezed into the narrow one.
 				 */
 				?>
-				<h2 class="abm-single-heading"><?php the_title(); ?></h2>
-
 				<?php if ( $abm_has_desc ) : ?>
 					<div class="abm-single-content entry-content">
 						<?php the_content(); ?>

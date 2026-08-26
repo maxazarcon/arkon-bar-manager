@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.1
+Stable tag: 2.13.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -282,6 +282,21 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.13.2 =
+Fix only.
+* On a wide screen an event's details -- date, time, category, cover -- sat
+  underneath the flyer instead of beside it, leaving the space to the right of
+  the flyer empty. The plain restatement of the title was a fourth block in the
+  same flex row and had to be full-width to read properly, which broke the row
+  and pushed the details below it. The title now opens the details column
+  instead, so it introduces the meta list at every width and the columns pair up
+  as intended. This also retires the last of the ordering rules behind two
+  earlier layout fixes.
+* The event page no longer shows a Category row when categories are switched off.
+  It read the terms directly while the calendar honoured the setting, so turning
+  categories off hid them in one place and not the other. Both now use the same
+  check, including the per-event override.
 
 = 2.13.1 =
 Fix only.
