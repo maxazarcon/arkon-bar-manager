@@ -350,7 +350,28 @@ function abm_build_gcal_url( $post_id, $ymd, $start, $end ) {
 
 	$query = http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
 
-	return 'https://calendar.google.com/calendar/render?' . $query . '&dates=' . $dates;
+	$url = 'https://calendar.google.com/calendar/render?' . $query . '&dates=' . $dates;
+
+	/*
+	 * Add the series as a recurring event where there is one, so a weekly night
+	 * is saved once rather than every week.
+	 *
+	 * Google's TEMPLATE link takes a single "recur" line and nothing else: the
+	 * RRULE only. Skipped nights cannot come with it, because EXDATE would have
+	 * to be a second line and a URL cannot carry a line break at all -- esc_url()
+	 * strips %0d and %0a outright as a header-injection guard, so the encoded
+	 * break is removed and the two lines arrive spliced into one unreadable
+	 * value. The .ics export is the faithful one and does carry the exceptions;
+	 * this is the convenience link, and a recurring entry a few nights too
+	 * generous is worth more than a single night. RDATE-only series -- dates with
+	 * no pattern behind them -- get no recur at all rather than a wrong rule.
+	 */
+	$series = ABM_Recurrence::describe( $post_id, $ymd );
+	if ( $series && '' !== $series['rrule'] ) {
+		$url .= '&recur=' . rawurlencode( 'RRULE:' . $series['rrule'] );
+	}
+
+	return $url;
 }
 
 /**

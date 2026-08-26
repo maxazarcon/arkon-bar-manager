@@ -3,7 +3,7 @@ Contributors: arkon
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.2
+Stable tag: 2.14.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,23 @@ sorts and paginates in SQL rather than expanding rules in PHP on every request. 
 non-repeating event gets exactly one row, so nothing downstream has to special
 case it. Open-ended rules are generated a configurable number of months ahead
 (24 by default) and extended daily by a scheduled task, so they never run dry.
+
+= Exporting a repeating event =
+
+Both exports describe the whole series, not the single night that was clicked, so
+a weekly night is saved to a visitor's calendar once. The series always starts at
+the night being viewed, so no past dates are added.
+
+Events with a recurrence rule are exported from that rule. Events imported from
+another calendar have no rule -- their dates were copied verbatim -- so the
+pattern is recovered from the dates: weekly and every-N-weekly, monthly on a
+date, and monthly on the nth weekday, with any skipped nights carried through as
+exceptions. Dates with no pattern behind them are listed individually in the .ics
+rather than described by a rule that would be wrong.
+
+The .ics is the faithful export. The Google Calendar link carries the rule but
+not the exceptions, because that format allows a single line and a URL cannot
+contain a line break.
 
 = Migrating from Modern Events Calendar =
 
@@ -263,6 +280,10 @@ unpacks to the correct folder name, so WordPress updates the plugin in place.
 
 == Upgrade Notice ==
 
+= 2.14.0 =
+Repeating events now export as recurring events rather than one night at a time.
+Existing links keep working; nothing needs reconfiguring.
+
 = 2.12.0 =
 The plugin now updates itself from its GitHub releases. Set ABM_GITHUB_REPO and
 the Update URI header to your repository before relying on it.
@@ -282,6 +303,28 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.14.0 =
+* Repeating events export as repeating events. "Download iCal" and "Add to
+  Google Calendar" on a weekly night now hand over the series rather than that
+  one date, so it is saved once instead of every week.
+* The series is described from the night being viewed forward, never from the
+  series start, so no past dates are written into anyone's calendar and DTSTART
+  is a real instance of the rule as RFC 5545 requires.
+* Events that carry a recurrence rule are described from the rule. Events
+  imported from another calendar carry no rule -- their dates came from the
+  source system rather than from a pattern -- so the pattern is recovered from
+  the dates themselves: weekly and every-N-weekly, monthly on a date, and
+  monthly on the nth weekday, with skipped nights kept as exceptions.
+* Where no pattern fits, the .ics lists the dates outright rather than inventing
+  a rule, and the Google Calendar link stays a single date. A wrong rule would
+  put nights in a visitor's calendar that the venue is not open for.
+* The Google Calendar link carries the rule but not the exceptions. Its format
+  allows one line and a URL cannot hold a line break, so the .ics is the
+  faithful export of the two.
+* A series is identified by the event rather than by the night it was saved
+  from, so saving the same weekly night from two different rows updates one
+  entry instead of leaving every night duplicated. Single dates are unchanged.
 
 = 2.13.2 =
 Fix only.

@@ -54,11 +54,36 @@ class ABM_ICal {
 		}
 		$desc = self::escape( $desc . ( $desc ? "\n\n" : '' ) . get_permalink( $post_id ) );
 
+		/*
+		 * A repeating event exports as a repeating event.
+		 *
+		 * The series is described from this night forward, so DTSTART below is a
+		 * genuine instance of the rule -- which RFC 5545 requires -- and no past
+		 * dates are written into the visitor's calendar. The times come from the
+		 * occurrence being viewed; a rule cannot say "this one night runs late",
+		 * and neither can any calendar client reading it.
+		 */
+		$series = ABM_Recurrence::describe( $post_id, $date );
+
 		$host = wp_parse_url( home_url(), PHP_URL_HOST );
-		// The date belongs in the UID: without it, saving two nights of a weekly
-		// event hands the calendar app the same UID twice and the second silently
-		// replaces the first instead of adding alongside it.
-		$uid = 'abm-event-' . $post_id . '-' . str_replace( '-', '', (string) $date ) . '@' . ( $host ? $host : 'localhost' );
+
+		/*
+		 * The UID identifies the thing being saved, and what that is depends on
+		 * whether this export is a series.
+		 *
+		 * A single night is identified by its date. Without it, saving two nights
+		 * of a weekly event hands the calendar app the same UID twice and the
+		 * second silently replaces the first instead of landing beside it.
+		 *
+		 * A series is identified by the event alone. Saving one from two different
+		 * rows is the same series twice, and dating the UID would file it as two
+		 * -- leaving the visitor with every night duplicated from whichever row
+		 * they clicked second onwards. One UID means the second save updates the
+		 * first, which is what re-saving a series should do.
+		 */
+		$uid = 'abm-event-' . $post_id
+			. ( $series ? '' : '-' . str_replace( '-', '', (string) $date ) )
+			. '@' . ( $host ? $host : 'localhost' );
 
 		$lines = array(
 			'BEGIN:VCALENDAR',
@@ -71,12 +96,31 @@ class ABM_ICal {
 			'DTSTAMP:' . $dtstamp,
 			'DTSTART:' . $dtstart,
 			'DTEND:' . $dtend,
-			'SUMMARY:' . $summary,
-			'DESCRIPTION:' . $desc,
-			'LOCATION:' . $location,
-			'URL:' . self::escape( get_permalink( $post_id ) ),
-			'END:VEVENT',
-			'END:VCALENDAR',
+		);
+
+		// EXDATE and RDATE carry the same clock time as DTSTART -- see stamp_all().
+		if ( $series ) {
+			if ( '' !== $series['rrule'] ) {
+				$lines[] = 'RRULE:' . $series['rrule'];
+			}
+			if ( $series['exdates'] ) {
+				$lines[] = 'EXDATE:' . implode( ',', self::stamp_all( $series['exdates'], $start_dt ) );
+			}
+			if ( $series['rdates'] ) {
+				$lines[] = 'RDATE:' . implode( ',', self::stamp_all( $series['rdates'], $start_dt ) );
+			}
+		}
+
+		$lines = array_merge(
+			$lines,
+			array(
+				'SUMMARY:' . $summary,
+				'DESCRIPTION:' . $desc,
+				'LOCATION:' . $location,
+				'URL:' . self::escape( get_permalink( $post_id ) ),
+				'END:VEVENT',
+				'END:VCALENDAR',
+			)
 		);
 
 		// Fold lines to 75 octets per RFC 5545.
@@ -91,6 +135,38 @@ class ABM_ICal {
 
 		echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- iCal payload, values escaped via self::escape().
 		exit;
+	}
+
+	/**
+	 * Render a list of dates as UTC timestamps carrying the series' own start
+	 * time, for EXDATE / RDATE.
+	 *
+	 * The clock time is taken from DTSTART rather than from each occurrence row.
+	 * An EXDATE only cancels an instance if it matches that instance exactly, so
+	 * a date stamped with some other time silently cancels nothing -- the failure
+	 * shows up as the skipped night still appearing in the visitor's calendar,
+	 * with nothing anywhere saying why.
+	 *
+	 * @param string[]          $dates    Y-m-d.
+	 * @param DateTimeInterface $start_dt The event's start, with its time.
+	 * @return string[]
+	 */
+	private static function stamp_all( $dates, $start_dt ) {
+		$utc  = new DateTimeZone( 'UTC' );
+		$out  = array();
+		$hour = (int) $start_dt->format( 'H' );
+		$min  = (int) $start_dt->format( 'i' );
+
+		foreach ( $dates as $ymd ) {
+			$dt = date_create( $ymd, $start_dt->getTimezone() );
+			if ( ! $dt ) {
+				continue;
+			}
+			$dt->setTime( $hour, $min, 0 );
+			$out[] = $dt->setTimezone( $utc )->format( 'Ymd\THis\Z' );
+		}
+
+		return $out;
 	}
 
 	/**

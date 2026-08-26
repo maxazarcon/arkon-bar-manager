@@ -33,6 +33,9 @@ class ABM_Occurrences {
 	 */
 	private static $recurring_cache = array();
 
+	/** Per-request memo of every stored date for an event, for dates_from(). */
+	private static $dates_cache = array();
+
 	/** Bump to force a table upgrade in maybe_install_table(). */
 	const SCHEMA_VERSION = '1';
 
@@ -746,6 +749,62 @@ class ABM_Occurrences {
 	}
 
 	/**
+	 * Every stored date for one event from a given date forward.
+	 *
+	 * Unlike upcoming_for(), which feeds a short "also coming up" list and is
+	 * capped at 50, this exists for the exports, which have to see the whole
+	 * remaining series to describe it as a recurrence rule. MAX_ROWS_PER_EVENT is
+	 * the ceiling the generator already works to, so it is the honest cap here.
+	 *
+	 * Dates only: the exports use the viewed occurrence's own times, and an
+	 * RFC 5545 rule cannot express "this night runs an hour later" anyway.
+	 *
+	 * Memoized per event, and filtered in PHP rather than re-queried, because the
+	 * Looper builds an export link for every rendered row and most rows on this
+	 * calendar belong to the same two weekly events. Querying per row would mean
+	 * reading several hundred dates a dozen times over to render one page --
+	 * which is the shape of the N+1 is_recurring() had for the same reason.
+	 *
+	 * @param int    $post_id Event ID.
+	 * @param string $from    Y-m-d; rows before this are ignored.
+	 * @return string[] Y-m-d, ascending.
+	 */
+	public static function dates_from( $post_id, $from ) {
+		$from = abm_sanitize_date( $from );
+		if ( '' === $from ) {
+			return array();
+		}
+
+		$post_id = (int) $post_id;
+
+		if ( ! isset( self::$dates_cache[ $post_id ] ) ) {
+			global $wpdb;
+			$table = self::table();
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT DISTINCT occur_date FROM {$table}
+					 WHERE post_id = %d ORDER BY occur_date ASC LIMIT %d",
+					$post_id,
+					self::MAX_ROWS_PER_EVENT
+				)
+			);
+
+			self::$dates_cache[ $post_id ] = array_map( 'strval', (array) $rows );
+		}
+
+		$out = array();
+		foreach ( self::$dates_cache[ $post_id ] as $ymd ) {
+			if ( $ymd >= $from ) {
+				$out[] = $ymd;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
 	 * Row count, next upcoming date and lock state for one event, in one query.
 	 *
 	 * Exists so the REST representation of an event costs a single extra query
@@ -811,9 +870,10 @@ class ABM_Occurrences {
 	public static function flush_cache( $post_id = null ) {
 		if ( null === $post_id ) {
 			self::$recurring_cache = array();
+			self::$dates_cache     = array();
 			return;
 		}
-		unset( self::$recurring_cache[ (int) $post_id ] );
+		unset( self::$recurring_cache[ (int) $post_id ], self::$dates_cache[ (int) $post_id ] );
 	}
 
 	/**
