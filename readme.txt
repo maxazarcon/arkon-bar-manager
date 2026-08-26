@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.15.3
+Stable tag: 2.16.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,6 +28,21 @@ fifty copies of the same show.
 Events can repeat daily, weekly, monthly on a date, or monthly on a weekday. Set
 an interval, give it an end date, or list the dates to skip for holidays.
 
+= Add a month at a time =
+
+Bulk Add takes a whole month of shows in one go. Paste the booking list you were
+sent, upload a spreadsheet, or type rows straight into the table. However it
+arrives, you get the same table of events to check and correct, and nothing is
+saved until you press Create.
+
+Pasted lists do not need a format. A line like `Sept 4 - Old Codger, Pickled -
+8pm` is read as a date, a time and a title, and lines that belong to the entry
+above become its description, so a festival day with a running order keeps it.
+
+Booking lists usually mix new shows in with corrections, so anything asking for
+something to be deleted or moved is set aside and shown to you rather than
+acted on. A line that says to delete a show never creates one.
+
 = Visitors can save the whole run =
 
 Every event has "Add to Google Calendar" and "Download iCal" buttons. On a
@@ -43,6 +58,8 @@ say "Close".
 = Features =
 
 * Flyer, date, start and end time, cover charge, category and description
+* Bulk Add: paste a booking list, upload a spreadsheet, or fill in a table, and
+  create a month of shows at once
 * Repeating events, with holiday dates skipped
 * `[abm_calendar]` shortcode: a month by month list with a Load More button
 * A page for every event, showing its other upcoming dates
@@ -117,6 +134,27 @@ the imported dates with the rule's -- or delete and recreate it. Everything othe
 than the dates edits normally. Over REST, check `abm_occurrences.locked` before
 writing a date.
 
+= My booking list says to delete some shows. What happens to those? =
+
+Nothing, deliberately. Bulk Add only creates events. Any line asking for
+something to be deleted, cancelled or moved is listed back to you under "these
+ask for changes to events that already exist" and left for you to handle.
+
+That is worth being firm about: a line reading "Delete July 23rd UniS" contains a
+date and a name, so a parser that treats every dated line as a new show would
+create the very event the list is asking to be rid of.
+
+A line that asks to move a show between two dates is set aside for the same
+reason. It names the date being left and the date being moved to, and reading the
+wrong one puts a show on a night you are not open.
+
+= What if a line in my list is not read correctly? =
+
+You will see it. Every row lands in an editable table before anything is written,
+rows the parser had to guess at are highlighted with a note saying what it
+assumed, and lines it could not read at all are printed back to you so you can
+check whether one of them was a real show.
+
 = Should I use the CSV importer or Migrate & Tools? =
 
 Migrate & Tools, whenever the old install is in the same database.
@@ -160,6 +198,27 @@ Your events, their meta and your categories are preserved -- delete them in the
 admin first if you want them gone.
 
 == Reference ==
+
+= Bulk Add =
+
+Events > Bulk Add. Three ways in, all landing on the same editable table:
+
+* **Paste a list.** One event per line. The date and the time are picked out of
+  the line and the rest becomes the title, so commas in a lineup are safe. Lines
+  beneath an entry become its description. Lines opening with an instruction
+  ("Add", "Update") have it removed; lines asking for a deletion or a move are
+  set aside instead of created.
+* **Upload a CSV.** A header row naming any of `title`, `date`, `start`, `end`,
+  `cost`, `category`, `description`. Common alternatives are accepted too --
+  `artist` for the title, `cover` for the cost, `time` for the start. Dates and
+  times may be written plainly (`Sept 4`, `8pm`) rather than as ISO values.
+* **Type rows.** Add and remove rows directly; the table is the same one the
+  other two fill in.
+
+Dates written without a year are read as the next time that date comes round,
+and the row says so. Categories are matched to existing terms by name and never
+created. An event whose title and date already exist is skipped, so pressing
+Create twice does not double the calendar.
 
 = Calendar shortcode =
 
@@ -324,6 +383,24 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.16.0 =
+* Bulk Add. A month of shows in one pass, from a pasted booking list, a CSV, or
+  rows typed straight into the table. All three fill the same table, which is
+  also the preview: nothing is written until Create, and every row can be
+  corrected first.
+* A pasted list needs no format. The date and the time are found in the line and
+  the rest is the title, so commas in a lineup survive; lines beneath an entry
+  become its description, which is where a festival running order belongs.
+* Lines asking for a deletion or a move are set aside and shown rather than
+  acted on. A booking list mixes new shows in with corrections, and a line
+  reading "Delete July 23rd UniS" carries a date and a name -- reading every
+  dated line as an addition would create the event the list asks to be rid of.
+* Lines that could not be read are reported rather than dropped, so a real show
+  with a mistyped date cannot go missing quietly.
+* Rows the parser had to guess at are flagged with what it assumed. An event
+  whose title and date already exist is skipped, so pressing Create twice does
+  not double the calendar.
 
 = 2.15.3 =
 * The Description is written for someone deciding whether to install the plugin.

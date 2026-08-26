@@ -113,3 +113,102 @@
 	margin: 0 0 7px;
 	line-height: 1.6;
 }
+
+/* Bulk Add ---------------------------------------------------------------- */
+
+/* The two input forms sit side by side while there is room and stack when there
+   is not. They are alternatives, not steps, so neither is given more weight. */
+.abm-bulk-inputs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24px;
+	margin: 16px 0 24px;
+}
+
+.abm-bulk-input {
+	flex: 1 1 380px;
+	min-width: 0;
+	padding: 4px 16px 8px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.abm-bulk-input h2 {
+	font-size: 14px;
+	margin: 12px 0 4px;
+}
+
+.abm-bulk-table input[type="text"],
+.abm-bulk-table input[type="date"],
+.abm-bulk-table input[type="time"],
+.abm-bulk-table select {
+	width: 100%;
+	min-width: 0;
+}
+
+/* Column widths, so the title gets the room and the rest stay compact. */
+.abm-bulk-table .abm-col-date    { width: 9.5em; }
+.abm-bulk-table .abm-col-time    { width: 7.5em; }
+.abm-bulk-table .abm-col-cost    { width: 6em; }
+.abm-bulk-table .abm-col-cat     { width: 9em; }
+.abm-bulk-table .abm-col-flyer   { width: 5em; }
+.abm-bulk-table .abm-col-actions { width: 2.5em; }
+
+.abm-bulk-table td { vertical-align: middle; }
+
+/* A row the parser had to guess at. Marked, not blocked — the guess may well be
+   right, and the point is only that it is worth a glance. */
+.abm-bulk-table .abm-bulk-row.has-note td { background: #fcf9e8; }
+
+.abm-bulk-note {
+	display: block;
+	margin-top: 2px;
+	font-size: 11px;
+	color: #8a6d1f;
+}
+
+.abm-bulk-remove {
+	color: #b32d2e;
+	font-size: 18px;
+	line-height: 1;
+	text-decoration: none;
+}
+
+.abm-bulk-flyer img {
+	display: block;
+	width: 40px;
+	height: 40px;
+	object-fit: cover;
+	border-radius: 3px;
+}
+
+.abm-bulk-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 12px 0;
+}
+
+.abm-bulk-status {
+	color: #646970;
+	font-size: 12px;
+}
+
+@media (max-width: 782px) {
+	/* wp-admin already switches to bigger controls here; the compact column
+	   widths fight that, so let the table find its own. */
+	.abm-bulk-table .abm-col-date,
+	.abm-bulk-table .abm-col-time,
+	.abm-bulk-table .abm-col-cost,
+	.abm-bulk-table .abm-col-cat { width: auto; }
+}
+
+.abm-bulk-desc {
+	width: 100%;
+	margin-top: 3px;
+	min-height: 28px;
+	font-size: 12px;
+	line-height: 1.4;
+	resize: vertical;
+}
