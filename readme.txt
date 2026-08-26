@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.15.1
+Stable tag: 2.15.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -376,6 +376,13 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.15.2 =
+Fix only, both in how readme.txt is rendered in the details modal.
+* A paragraph that opens in bold was read as a bullet, which swallowed its first
+  asterisk and left the rest of the markup showing in the text. A bullet now
+  requires a space after the asterisk, which is what separates the two.
+* Italics render. `*like this*` reached the page with its asterisks intact.
 
 = 2.15.1 =
 Documentation, and the details modal that renders it.

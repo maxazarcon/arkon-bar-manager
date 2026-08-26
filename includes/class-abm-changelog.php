@@ -167,8 +167,12 @@ class ABM_Changelog {
 			// one list of mixed markers.
 			$bullet = null;
 			$kind   = '';
-			if ( '*' === substr( $trimmed, 0, 1 ) ) {
-				$bullet = trim( substr( $trimmed, 1 ) );
+			// The space after the asterisk is required, and is what separates a
+			// bullet from a paragraph that opens in bold. Without it, a line
+			// beginning "**Note**" is read as a list item, loses its first
+			// asterisk and renders with the rest of its markup showing.
+			if ( preg_match( '/^\*\s+(.*)$/', $trimmed, $m ) ) {
+				$bullet = $m[1];
 				$kind   = 'ul';
 			} elseif ( preg_match( '/^\d+\.\s+(.*)$/', $trimmed, $m ) ) {
 				$bullet = $m[1];
@@ -206,7 +210,10 @@ class ABM_Changelog {
 	 */
 	private static function inline( $text ) {
 		$text = esc_html( (string) $text );
+		// Bold before italic: **x** would otherwise match the italic pattern
+		// twice and produce an empty emphasis around the middle.
 		$text = preg_replace( '/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text );
+		$text = preg_replace( '/\*(?!\s)([^*]+?)(?<!\s)\*/', '<em>$1</em>', $text );
 		$text = preg_replace( '/`(.+?)`/', '<code>$1</code>', $text );
 		return $text;
 	}
