@@ -1,0 +1,28 @@
+# This tree is LF throughout.
+#
+# .gitattributes already normalises line endings on the way into git, which is
+# why a release archive is LF whatever the working copy happens to be. This file
+# is the other half: it keeps editors from writing CRLF into the working copy in
+# the first place, so the two never disagree and `git status` never reports a
+# file as modified when only its line endings changed.
+#
+# VS Code needs the EditorConfig extension (EditorConfig.EditorConfig) to honour
+# this. Without it, set "files.eol": "\n" in the workspace settings instead.
+
+root = true
+
+[*]
+end_of_line = lf
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{php,js,css}]
+indent_style = tab
+
+[*.{txt,md,yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
