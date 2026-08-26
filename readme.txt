@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.16.0
+Stable tag: 2.17.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,12 @@ above become its description, so a festival day with a running order keeps it.
 Booking lists usually mix new shows in with corrections, so anything asking for
 something to be deleted or moved is set aside and shown to you rather than
 acted on. A line that says to delete a show never creates one.
+
+Flyers are attached for you. Upload the folder to the Media Library and Bulk Add
+pairs each row with the artwork whose filename starts with that date, so
+`8-29.jpg` finds the show on the 29th. Where a night has two shows and two
+flyers, the words after the date decide which is which, and anything still
+uncertain is left for you to pick rather than guessed at.
 
 = Visitors can save the whole run =
 
@@ -215,6 +221,15 @@ Events > Bulk Add. Three ways in, all landing on the same editable table:
 * **Type rows.** Add and remove rows directly; the table is the same one the
   other two fill in.
 
+**Match flyers by date** pairs rows with images already in the Media Library.
+A filename beginning with the row's date matches it -- `8-29.jpg`, `08-29.jpg`
+and `8-29 Ascension.jpg` all belong to the 29th of August. Where several share a
+date, the words after the date are compared with the event title; where that
+settles all but one row and one flyer, the last pair is matched by elimination;
+anything still uncertain is left empty and labelled. Runs automatically after
+reading a list, and on demand once dates have been corrected or the folder has
+been uploaded.
+
 Dates written without a year are read as the next time that date comes round,
 and the row says so. Categories are matched to existing terms by name and never
 created. An event whose title and date already exist is skipped, so pressing
@@ -383,6 +398,20 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.17.0 =
+* Bulk Add attaches flyers for you. Upload the folder to the Media Library and
+  each row is paired with the image whose filename begins with that date, so
+  `8-29.jpg` finds the show on the 29th. Both `8-29` and `08-29` are understood.
+* Where a night has more than one show, the words after the date settle it:
+  `8-29 Ascension.jpg` goes to the Ascension show and the plainly named
+  `8-29.jpeg` to the other. Where that leaves exactly one row and one flyer, the
+  last pair is matched by elimination.
+* Anything still uncertain is left empty and labelled rather than guessed at. A
+  wrong flyer is worse than none, because nobody checks a thumbnail that is
+  already filled in.
+* Matching runs after reading a list, and there is a button to run it again once
+  dates have been corrected or the folder has been uploaded.
 
 = 2.16.0 =
 * Bulk Add. A month of shows in one pass, from a pasted booking list, a CSV, or

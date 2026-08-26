@@ -96,12 +96,20 @@ class ABM_Bulk {
 
 		$rows    = array();
 		$skipped = array();
-		$actions = array();
-		$report  = null;
-		$action  = isset( $_POST['abm_bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['abm_bulk_action'] ) ) : '';
+		$actions  = array();
+		$report   = null;
+		$matching = null;
+		$action   = isset( $_POST['abm_bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['abm_bulk_action'] ) ) : '';
 
 		if ( '' !== $action ) {
 			check_admin_referer( 'abm_bulk' );
+		}
+
+		// The table posts as "create"; its Match flyers button carries its own
+		// field, so pressing it re-matches instead of writing anything.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified above.
+		if ( 'create' === $action && ! empty( $_POST['abm_match_flyers'] ) ) {
+			$action = 'match_flyers';
 		}
 
 		switch ( $action ) {
@@ -119,11 +127,25 @@ class ABM_Bulk {
 				$skipped = $parsed['skipped'];
 				break;
 
+			case 'match_flyers':
+				$rows = $this->posted_rows();
+				break;
+
 			case 'create':
 				$rows   = $this->posted_rows();
 				$report = $this->create( $rows );
 				$rows   = $report['remaining'];
 				break;
+		}
+
+		// Pair rows with artwork already in the Media Library. Runs after a parse
+		// and on demand, but never after a create -- the rows left over there are
+		// failures being handed back, and re-matching them would bury the reason
+		// under a fresh set of notes.
+		if ( in_array( $action, array( 'parse_paste', 'parse_csv', 'match_flyers' ), true ) && $rows ) {
+			$flyers   = $this->match_flyers( $rows );
+			$rows     = $flyers['rows'];
+			$matching = $flyers;
 		}
 
 		if ( ! $rows && ! $report ) {
@@ -136,6 +158,22 @@ class ABM_Bulk {
 			<?php
 			if ( $report ) {
 				$this->render_report( $report );
+			}
+			if ( $matching && ( $matching['matched'] || $matching['ambiguous'] ) ) {
+				?>
+				<div class="notice notice-info">
+					<p>
+						<?php
+						printf(
+							/* translators: 1: flyers attached, 2: dates with more than one flyer. */
+							esc_html__( 'Matched %1$d flyers from the Media Library by date. %2$d dates have more than one flyer and were left for you to choose.', 'arkon-bar-manager' ),
+							(int) $matching['matched'],
+							(int) $matching['ambiguous']
+						);
+						?>
+					</p>
+				</div>
+				<?php
 			}
 			if ( $actions ) {
 				$this->render_actions( $actions );
@@ -249,6 +287,23 @@ class ABM_Bulk {
 
 		<p class="abm-bulk-actions">
 			<button type="button" class="button" id="abm-bulk-add"><?php esc_html_e( 'Add row', 'arkon-bar-manager' ); ?></button>
+			<?php
+			/*
+			 * Re-pairs rows with artwork after the dates have been corrected, or
+			 * once the folder has been uploaded.
+			 *
+			 * Its own field name rather than a second abm_bulk_action: two inputs
+			 * of one name would leave the outcome resting on which appears last in
+			 * the markup, and the hidden "create" has to stay first so that Enter
+			 * in a table cell still submits the table.
+			 */
+			?>
+			<button type="submit" class="button" name="abm_match_flyers" value="1">
+				<?php esc_html_e( 'Match flyers by date', 'arkon-bar-manager' ); ?>
+			</button>
+			<span class="description">
+				<?php esc_html_e( 'Upload the flyer folder to the Media Library first. Filenames beginning with the date, like 8-29.jpg, are paired with the matching row.', 'arkon-bar-manager' ); ?>
+			</span>
 			<span class="abm-bulk-status" aria-live="polite"></span>
 		</p>
 
@@ -664,6 +719,248 @@ class ABM_Bulk {
 			}
 		}
 		return $best;
+	}
+
+	/* --------------------------------------------------------------------- */
+	/* Flyers                                                                */
+	/* --------------------------------------------------------------------- */
+
+	/**
+	 * Fill in each row's flyer from the Media Library, by date.
+	 *
+	 * Flyers arrive as a folder named by the night they belong to -- "8-19.jpg",
+	 * "8-29 Ascension.jpg", "9-9 hopscotch kickoff.jpeg" -- so once the folder is
+	 * in the Media Library the date in the filename is enough to pair most of them
+	 * with a row automatically.
+	 *
+	 * The date alone is not a key, though. A venue can run two things on one
+	 * night, and then the folder holds "8-29 Ascension.jpg" and "8-29.jpeg" for
+	 * two different shows. Where a date has more than one flyer the words after
+	 * the date decide it, and where they decide nothing the row is left empty and
+	 * told why. Attaching the wrong artwork to a show is worse than attaching
+	 * none: nobody checks a thumbnail that is already filled in.
+	 *
+	 * @param array $rows Rows.
+	 * @return array{rows:array,matched:int,ambiguous:int}
+	 */
+	private function match_flyers( array $rows ) {
+		$matched   = 0;
+		$ambiguous = 0;
+
+		// Work a date at a time. A night with two shows has two flyers, and they
+		// can only be told apart by looking at all of them together.
+		$by_date = array();
+		foreach ( $rows as $i => $row ) {
+			if ( $row['flyer'] || '' === $row['date'] ) {
+				continue;
+			}
+			$by_date[ $row['date'] ][] = $i;
+		}
+
+		foreach ( $by_date as $date => $indexes ) {
+			$candidates = $this->flyers_for_date( $date );
+			if ( ! $candidates ) {
+				continue;
+			}
+
+			$claimed = array();
+			$unsure  = array();
+
+			foreach ( $indexes as $i ) {
+				$free = array_values(
+					array_filter(
+						$candidates,
+						static function ( $c ) use ( $claimed ) {
+							return ! in_array( $c['id'], $claimed, true );
+						}
+					)
+				);
+
+				if ( ! $free ) {
+					break;
+				}
+
+				// One flyer and one row for the date needs no deciding.
+				if ( 1 === count( $free ) && 1 === count( $indexes ) ) {
+					$rows[ $i ]['flyer']   = (int) $free[0]['id'];
+					$rows[ $i ]['notes'][] = 'flyer matched';
+					$claimed[]             = (int) $free[0]['id'];
+					++$matched;
+					continue;
+				}
+
+				$best = $this->best_flyer( $free, $rows[ $i ]['title'] );
+				if ( $best ) {
+					$rows[ $i ]['flyer']   = (int) $best;
+					$rows[ $i ]['notes'][] = 'flyer matched';
+					$claimed[]             = $best;
+					++$matched;
+					continue;
+				}
+
+				$unsure[] = $i;
+			}
+
+			/*
+			 * What is left over, by elimination.
+			 *
+			 * The common shape is a night with two shows where only one flyer was
+			 * given a descriptive name -- "8-29 Ascension.jpg" and "8-29.jpeg". The
+			 * named one is claimed above, and the plain one then has exactly one
+			 * row left that could want it. That is a deduction rather than a guess,
+			 * so it is worth making; anything less certain is left alone.
+			 */
+			$free = array_values(
+				array_filter(
+					$candidates,
+					static function ( $c ) use ( $claimed ) {
+						return ! in_array( $c['id'], $claimed, true );
+					}
+				)
+			);
+
+			if ( 1 === count( $unsure ) && 1 === count( $free ) ) {
+				$rows[ $unsure[0] ]['flyer']   = (int) $free[0]['id'];
+				$rows[ $unsure[0] ]['notes'][] = 'flyer matched (only one left for this date)';
+				++$matched;
+				continue;
+			}
+
+			foreach ( $unsure as $i ) {
+				$rows[ $i ]['notes'][] = sprintf(
+					/* translators: %d: number of flyers sharing the date. */
+					__( '%d flyers on this date — pick one', 'arkon-bar-manager' ),
+					count( $candidates )
+				);
+				++$ambiguous;
+			}
+		}
+
+		return array(
+			'rows'      => $rows,
+			'matched'   => $matched,
+			'ambiguous' => $ambiguous,
+		);
+	}
+
+	/**
+	 * Image attachments whose filename begins with this date.
+	 *
+	 * Matches on post_name rather than the stored path: WordPress slugifies the
+	 * filename on upload, so "8-29 Ascension.jpg" becomes "8-29-ascension" and the
+	 * date is a clean prefix. Both "8-9" and "08-09" are tried, since either may
+	 * be typed.
+	 *
+	 * @param string $ymd Y-m-d.
+	 * @return array<int,array{id:int,slug:string}>
+	 */
+	private function flyers_for_date( $ymd ) {
+		global $wpdb;
+
+		$month = (int) substr( $ymd, 5, 2 );
+		$day   = (int) substr( $ymd, 8, 2 );
+
+		$prefixes = array_unique(
+			array(
+				$month . '-' . $day,
+				sprintf( '%02d-%02d', $month, $day ),
+			)
+		);
+
+		$where = array();
+		$args  = array();
+		foreach ( $prefixes as $prefix ) {
+			// Exactly the date, or the date followed by a separator. Without the
+			// separator "8-1" would also claim every "8-19" in the library.
+			$where[] = '(p.post_name = %s OR p.post_name LIKE %s)';
+			$args[]  = $prefix;
+			$args[]  = $wpdb->esc_like( $prefix . '-' ) . '%';
+		}
+
+		$sql = "SELECT p.ID, p.post_name
+				FROM {$wpdb->posts} p
+				WHERE p.post_type = 'attachment'
+				  AND p.post_mime_type LIKE 'image/%'
+				  AND (" . implode( ' OR ', $where ) . ')
+				LIMIT 20';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$found = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+
+		$out = array();
+		foreach ( (array) $found as $row ) {
+			$out[] = array(
+				'id'   => (int) $row->ID,
+				'slug' => (string) $row->post_name,
+			);
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Choose between several flyers sharing a date, using the words after the
+	 * date in the filename. Returns 0 when nothing wins outright, which leaves
+	 * the row for a person rather than guessing.
+	 *
+	 * @param array  $candidates From flyers_for_date().
+	 * @param string $title      Row title.
+	 * @return int Attachment ID, or 0.
+	 */
+	private function best_flyer( array $candidates, $title ) {
+		$wanted = $this->words( $title );
+		if ( ! $wanted ) {
+			return 0;
+		}
+
+		$scores = array();
+		foreach ( $candidates as $candidate ) {
+			// Drop the leading date, keep what describes the night.
+			$descriptor = preg_replace( '/^\d{1,2}-\d{1,2}-?/', ' ', $candidate['slug'] );
+			$scores[]   = array(
+				'id'    => $candidate['id'],
+				'score' => count( array_intersect( $wanted, $this->words( $descriptor ) ) ),
+			);
+		}
+
+		usort(
+			$scores,
+			static function ( $a, $b ) {
+				return $b['score'] <=> $a['score'];
+			}
+		);
+
+		// A winner has to actually win. Nothing matched, or a tie at the top,
+		// means the filename does not distinguish them.
+		if ( $scores[0]['score'] < 1 ) {
+			return 0;
+		}
+		if ( isset( $scores[1] ) && $scores[1]['score'] === $scores[0]['score'] ) {
+			return 0;
+		}
+
+		return (int) $scores[0]['id'];
+	}
+
+	/**
+	 * Comparable words from a title or filename: lowercase, punctuation gone, and
+	 * without the short joining words that match everything.
+	 *
+	 * @param string $text Text.
+	 * @return string[]
+	 */
+	private function words( $text ) {
+		$text  = strtolower( (string) $text );
+		$text  = preg_replace( '/[^a-z0-9]+/', ' ', $text );
+		$stop  = array( 'the', 'and', 'with', 'a', 'an', 'of', 'at', 'for', 'to', 'featuring', 'feat', 'flyer', 'night', 'party' );
+		$words = array_filter(
+			preg_split( '/\s+/', trim( $text ) ),
+			static function ( $w ) use ( $stop ) {
+				return strlen( $w ) > 2 && ! in_array( $w, $stop, true );
+			}
+		);
+
+		return array_values( array_unique( $words ) );
 	}
 
 	/* --------------------------------------------------------------------- */
