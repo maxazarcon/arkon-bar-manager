@@ -130,18 +130,19 @@ class ABM_Changelog {
 		$out   = '';
 		$para  = array();
 		$items = array();
+		$tag   = 'ul';
 
-		$flush = static function () use ( &$para, &$items, &$out ) {
+		$flush = static function () use ( &$para, &$items, &$out, &$tag ) {
 			if ( $para ) {
 				$out .= '<p>' . self::inline( implode( ' ', $para ) ) . '</p>';
 				$para = array();
 			}
 			if ( $items ) {
-				$out .= '<ul>';
+				$out .= '<' . $tag . '>';
 				foreach ( $items as $item ) {
 					$out .= '<li>' . self::inline( $item ) . '</li>';
 				}
-				$out  .= '</ul>';
+				$out  .= '</' . $tag . '>';
 				$items = array();
 			}
 		};
@@ -160,15 +161,30 @@ class ABM_Changelog {
 				continue;
 			}
 
+			// "* item" is a bullet, "1. item" a numbered step. Switching between
+			// the two closes the open list, so a numbered procedure with bullets
+			// under its steps renders as a list followed by a list rather than
+			// one list of mixed markers.
+			$bullet = null;
+			$kind   = '';
 			if ( '*' === substr( $trimmed, 0, 1 ) ) {
-				if ( $para ) {
+				$bullet = trim( substr( $trimmed, 1 ) );
+				$kind   = 'ul';
+			} elseif ( preg_match( '/^\d+\.\s+(.*)$/', $trimmed, $m ) ) {
+				$bullet = $m[1];
+				$kind   = 'ol';
+			}
+
+			if ( null !== $bullet ) {
+				if ( $para || ( $items && $kind !== $tag ) ) {
 					$flush();
 				}
-				$items[] = trim( substr( $trimmed, 1 ) );
+				$tag     = $kind;
+				$items[] = $bullet;
 				continue;
 			}
 
-			// A line under an open bullet continues it; readme.txt wraps them.
+			// A line under an open list item continues it; readme.txt wraps them.
 			if ( $items ) {
 				$items[ count( $items ) - 1 ] .= ' ' . $trimmed;
 				continue;

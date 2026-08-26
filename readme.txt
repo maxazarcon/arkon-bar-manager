@@ -1,260 +1,333 @@
 === Arkon Event Manager ===
 Contributors: arkon
+Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.15.0
+Stable tag: 2.15.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Bar event management for WordPress: events with date, time (including "Close"),
-category and flyer, surfaced on the frontend via Themeco Pro/Cornerstone Looper
-+ Dynamic Content, with per-event iCal and Google Calendar export.
+An events calendar for venues: repeating nights, flyers, cover charge, and iCal / Google Calendar exports that understand a whole series.
 
 == Description ==
 
-= Repeating events =
+Arkon Event Manager is an events calendar for places that run a regular
+programme -- music rooms, bars, theatres, community halls. It covers what a
+listings page actually needs and stops there: a flyer, a start and end time, a
+door charge, a category, a description, and nights that repeat.
 
-An event holds one date plus an optional recurrence rule (daily, weekly, monthly
-on the same date, or monthly on the same weekday), with an interval, an optional
-end date or occurrence count, and a list of dates to skip for holidays.
+Add `[abm_calendar]` to a page and you have a calendar. Every event also gets its
+own page, and every date can be added to a visitor's calendar in one click.
 
-Rules are expanded into concrete dates in a dedicated table, so the calendar
-sorts and paginates in SQL rather than expanding rules in PHP on every request. A
-non-repeating event gets exactly one row, so nothing downstream has to special
-case it. Open-ended rules are generated a configurable number of months ahead
-(24 by default) and extended daily by a scheduled task, so they never run dry.
+= One event, many dates =
 
-= Exporting a repeating event =
+One design decision separates this from most calendar plugins. A repeating event
+is **a single event with many dates**, not many copies of an event, and each of
+those dates is a real row the calendar can sort, filter and page through in SQL.
 
-Both exports describe the whole series, not the single night that was clicked, so
-a weekly night is saved to a visitor's calendar once. The series always starts at
-the night being viewed, so no past dates are added.
+That matters more than it sounds. On a venue calendar a couple of weekly fixtures
+are usually most of the listings -- a Monday night and a Tuesday night can easily
+be three quarters of everything on the page. A calendar that loops over *posts*
+renders each of those once and silently drops the rest of the month. Here the
+listing, the exports, the category archives and the importer all read dates, so a
+weekly night appears on every night it runs.
+
+It also means paging is stable. The calendar walks a cursor over dates rather
+than counting posts, so publishing an event while a visitor is part-way down the
+list cannot make a row repeat or disappear.
+
+= Features =
+
+* Events with a date, a start time and an end time -- including a literal
+  "Close" for nights that end when the bar does.
+* Repeating events: daily, weekly, monthly on the same date, or monthly on the
+  same weekday. Each takes an interval, an optional end date or occurrence
+  count, and a list of dates to skip for holidays.
+* Open-ended repeats generate a configurable window ahead (24 months by default)
+  and a daily task rolls the window forward, so they never run dry.
+* Shows that run past midnight stay one listing on the night they start, read
+  "8:00 PM - 1:00 AM", and export with the right finish time.
+* A flyer per event, taken from the Featured Image, with a global placeholder
+  for events that have none.
+* Editable event categories, with archive pages that use the same layout as the
+  calendar.
+* A door charge, formatted with your currency symbol, or nothing at all when the
+  night is free.
+* `[abm_calendar]` -- a month-grouped list with collapsible months and a Load
+  More button that pages over AJAX.
+* A page per event, rendered by the plugin when your theme has no template for
+  it, showing the night that was clicked and the other nights still to come.
+* iCal download and "Add to Google Calendar" links on every event. For a
+  repeating event these describe the **whole series**, so a weekly night is
+  saved once rather than every week.
+* An importer that moves a calendar over from Modern Events Calendar without
+  losing a date.
+* Redirects that keep the old plugin's event URLs working after the move.
+* Self-updating from GitHub releases, using the `Update URI` mechanism built
+  into WordPress rather than a bundled updater library.
+
+= Exports that describe the series =
+
+Handing someone a single night is not much use when the event runs every week.
+Both exports describe the series from the night being viewed forward, so no past
+dates are added and the visitor saves it once.
 
 Events with a recurrence rule are exported from that rule. Events imported from
-another calendar have no rule -- their dates were copied verbatim -- so the
-pattern is recovered from the dates: weekly and every-N-weekly, monthly on a
-date, and monthly on the nth weekday, with any skipped nights carried through as
-exceptions. Dates with no pattern behind them are listed individually in the .ics
-rather than described by a rule that would be wrong.
+another calendar have no rule -- their dates were copied across verbatim -- so
+the pattern is recovered from the dates themselves: weekly, every-N-weekly,
+monthly on a date, and monthly on the nth weekday, with any skipped nights
+carried through as exceptions. Where no pattern fits, the `.ics` lists the dates
+individually rather than inventing a rule that would put the wrong nights in
+someone's calendar.
 
-The .ics is the faithful export. The Google Calendar link carries the rule but
-not the exceptions, because that format allows a single line and a URL cannot
-contain a line break.
+The `.ics` is the faithful export of the two. The Google Calendar link carries
+the rule but not the exceptions, because that format allows a single line and a
+URL cannot contain a line break.
 
-= Migrating from Modern Events Calendar =
+= Works with your theme, or with Cornerstone =
 
-Use **Migrate & Tools**, not the CSV importer, if the MEC install is in the same
-database.
+The shortcode needs nothing but a page, and the event template steps aside the
+moment your theme provides one of its own.
 
-A MEC CSV export carries one row per event keyed on the MEC post ID. Every
-occurrence of a repeating event therefore collapses onto a single record, and a
-weekly event arrives with one date instead of a hundred. On a venue calendar
-where a couple of weekly nights can be most of the listings, that quietly removes
-the majority of the calendar.
+If you build with Themeco Pro or Cornerstone, the plugin also registers a Looper
+Provider that loops over **dates rather than posts**, and every field is exposed
+as pre-formatted post meta for Dynamic Content -- so a bespoke layout needs no
+PHP. See Reference below.
 
-The database importer reads MEC's own occurrence table and copies every date
-verbatim, so the new calendar shows exactly what the old one showed. It also
-reuses the existing attachments instead of re-downloading images, maps categories
-by name, and records each event's original slug so old links keep resolving.
+= Coming from another calendar plugin =
+
+Migrate & Tools imports directly from a Modern Events Calendar install in the
+same database, reading MEC's own occurrence table and copying every date exactly
+as it stood. It reuses flyers already in your Media Library instead of
+re-downloading them, maps categories by name, and records each event's original
+slug so old links keep resolving.
 
 Because MEC's schema has changed between versions, the importer resolves every
-table and column at runtime and reports what it found. If it cannot recognize the
-occurrence table it refuses to write rather than importing one date per event,
-since that failure otherwise looks like a successful import until someone notices
-the calendar is empty. Run the preview first: it lists the events contributing the
-most dates, so a weekly event showing a single date is visible immediately.
+table and column at run time and reports what it found. If it cannot recognise
+the occurrence table it refuses to write rather than importing one date per
+event -- that failure otherwise looks like a successful import until somebody
+notices the calendar is empty. Run the preview first: it lists the events
+contributing the most dates, so a weekly event showing a single date is obvious
+straight away.
 
-= Legacy URLs =
+A CSV importer is included for other sources, but do not use it for MEC. See the
+FAQ.
 
-Events migrated from MEC keep their old slug, and requests to the previous
-single-event base (/event-archive/<slug>/ by default) are 301 redirected to the
-current permalink, including any trailing /ical/ and any query string. Unknown
+= For developers =
+
+Events are a normal post type (`abm_event`) with a normal taxonomy
+(`abm_category`). Dates live in their own table, one row per event per date, and
+every consumer reads that table.
+
+Event meta is exposed over the REST API, so a complete event -- dates, times,
+cost, recurrence, categories, flyer -- can be created or edited in a single
+authenticated call. Each event also carries a read-only `abm_occurrences` object
+reporting how many dates it has, its next one, and whether its dates are locked.
+
+Uninstalling removes the plugin's settings, the date table and its scheduled
+task. Your events, their meta and your categories are left alone.
+
+== Installation ==
+
+1. Upload the plugin to `wp-content/plugins/` and activate it, or install the
+   zip through Plugins > Add Plugin > Upload Plugin.
+2. An **Events** menu appears in the admin. Add an event: title, date, start and
+   end time, cost, category, and a Featured Image for the flyer.
+3. Create a page for your calendar and put `[abm_calendar]` on it.
+4. Visit **Events > Settings** to set the currency symbol, the date format, the
+   default "Close" time used by exports, a global flyer placeholder, how far
+   ahead open-ended repeats generate, and how many events the calendar loads per
+   batch.
+5. Moving from another calendar? Go to **Events > Migrate & Tools** and run the
+   preview before importing.
+
+The post type registers its pages under `/music-and-events/`, and the category
+archives under `/event-category/`. Flush permalinks (Settings > Permalinks >
+Save) if event pages 404 immediately after activating.
+
+== Frequently Asked Questions ==
+
+= Do I need Cornerstone or Themeco Pro? =
+
+No. `[abm_calendar]` and the single event template work on any theme. The Looper
+Provider and the Dynamic Content meta keys are there if you use Cornerstone, and
+inert if you do not.
+
+= I changed an imported event's date and the calendar did not move. Why? =
+
+Because its dates are locked, and that is deliberate.
+
+An event imported from another calendar holds its dates verbatim and has no
+recurrence rule, so regenerating it would collapse hundreds of real dates down to
+the single date in the date field. The plugin refuses to do that. Editing the
+date field on such an event succeeds and changes the displayed date, but the
+calendar keeps showing the imported dates.
+
+To take over from an import, give the event a recurrence rule -- which replaces
+the imported dates with the rule's -- or delete and recreate it. Everything other
+than the dates edits normally. Over REST, check `abm_occurrences.locked` before
+writing a date.
+
+= Should I use the CSV importer or Migrate & Tools? =
+
+Migrate & Tools, whenever the old install is in the same database.
+
+A Modern Events Calendar CSV export carries one row per event, keyed on the event
+ID. Every date of a repeating event therefore collapses onto a single record, and
+a weekly night arrives with one date instead of hundreds. Migrate & Tools reads
+the occurrence table directly and copies every date.
+
+= What happens to my old event URLs? =
+
+Imported events keep their original slug, and requests to the previous
+single-event base (`/event-archive/<slug>/` by default) are 301 redirected to the
+new permalink, including any trailing `/ical/` and any query string. Unknown
 slugs are left to 404 rather than guessed at.
 
+= How do shows that run past midnight work? =
 
+Enter the real times. A show from 8:00 PM to 1:00 AM is one listing on the night
+it starts, reading "8:00 PM - 1:00 AM", and it exports with the correct finish
+time. There is no need for the same-day-midnight workaround other calendars
+require, because a date here carries a time range rather than a second date.
 
-Arkon Event Manager registers an "Events" post type (abm_event) and an editable
-"Event Categories" taxonomy (abm_category). Each event stores its data in
-abm_-prefixed post meta — including pre-formatted display strings — so you can
-build your events calendar layout directly in Cornerstone with a Looper and pull
-each field through Dynamic Content with zero extra code.
+= What does "End time is approximate" do? =
 
-= Admin =
+It affects the exports only, never the listing, and it is off by default. Turn it
+on when the end time is a placeholder or the night is genuinely open-ended: the
+export then stops at the end of the start day instead of claiming a finish time.
+Leave it off when the end time is real.
 
-Arkon Event Manager menu in wp-admin:
-* All Events — list, sortable by date, with an All / Upcoming / Past filter.
-* Add Event — title (event name), date picker, start time, end time (or "Close"),
-  "End time is approximate" toggle (off by default), event cost, and category
-  checklist. The flyer is the post's Featured Image (set via the Featured Image
-  panel); if none is set, the global placeholder is used.
-* Categories — add / rename / remove categories (seeded with Music & Event).
-* Settings — global flyer placeholder, default "Close" time (for calendar
-  exports), currency symbol, date format, venue name and address, how far
-  ahead open-ended repeats generate dates, and the [abm_calendar] initial /
-  Load More counts + category-tag visibility.
-* Import — bring events in from another calendar plugin's CSV export.
-* Migrate & Tools — import directly from a Modern Events Calendar install in the
-  same database (recommended over CSV, see below), rebuild occurrences, and read
-  a schema diagnostic.
+= Can I change the calendar's accent colour? =
 
-= Import =
+Yes, with one CSS variable:
 
-Event Manager > Import accepts a CSV exported from another calendar plugin and
-creates events from it. The source format is auto-detected (or chosen manually).
-Modern Events Calendar (MEC) is supported out of the box; the importer framework
-(includes/importers/) is built so additional formats can be added as subclasses
-of ABM_Importer.
+`.abm-calendar { --abm-accent: #d6006e; }`
 
-MEC column mapping:
-* Title           -> event title
-* Start Date      -> abm_event_date
-* Start Time      -> abm_event_time_start ("8:00 pm" -> 20:00; "All Day" -> blank)
-* End Time        -> abm_event_time_end ("10:00 pm" -> 22:00; blank -> no end)
-* Event Cost      -> abm_event_cost (door charge)
-* Categories      -> abm_category terms ("Event, Music" split; created if missing)
-* Featured Image  -> the event's Featured Image (reused from the Media Library
-                     or downloaded; MEC's own flyer-placeholder image is skipped
-                     so the global placeholder is used)
-* Description     -> post content
-* Link            -> post slug reused from .../event-archive/<slug>/ to preserve URLs
-* ID              -> stored as abm_import_source_id for de-duplication
+= What does uninstalling remove? =
 
-Options: Publish or Draft; reuse images already in the Media Library; download
-images on/off; update events previously imported from the same source (matched
-by source ID -- events whose details are unchanged are skipped rather than
-re-saved); and a dry run that reports counts without writing anything, including
-how many flyers would be reused vs. downloaded.
+The plugin's settings, the date table and the scheduled task that extends it.
+Your events, their meta and your categories are preserved -- delete them in the
+admin first if you want them gone.
 
-A completed import shows an Import Complete screen summarizing created, updated
-and skipped events plus flyers reused / downloaded, with links to view the
-events or import another file. A dry run instead reports the same counts inline
-so you can review them, untick "Dry run" and proceed.
-
-Reuse existing images: when moving from another plugin on the SAME site, the
-flyers are already in your Media Library. With this on, the importer matches each
-event's image URL to an existing attachment (by exact URL, by the local uploads
-path, then by filename so differing CDN hosts/paths still match) and reuses it
-instead of downloading a duplicate. If no match is found and "download" is also
-on, it falls back to downloading.
-
-Importing is restricted to administrators; the upload is validated (.csv, tab/
-comma/semicolon auto-detected, BOM-tolerant, 5 MB cap) and only HTTP(S) image
-URLs are fetched.
-
-= "End time is approximate" (per event) =
-
-Set on each event (Event Details box), **off by default**. It affects the
-Google Calendar / iCal export only, never the listing.
-
-The listing always shows an event on its start date, because an occurrence
-carries a date and a time range rather than a start date and an end date. A show
-running 8:00 PM to 1:00 AM is therefore one row, on the day it starts, reading
-"8:00 PM - 1:00 AM".
-
-Turn this on only when the end time is a placeholder or the night is genuinely
-open-ended: the export then stops at 11:59 PM of the start day instead of
-claiming a finish time. Leave it off when the end time is real, so the export
-correctly runs past midnight. Stored as the abm_display_start_only meta key.
-
-Each published event gets its own page at /music-and-events/event-title/ (the
-same base as the calendar page; the post type has no separate archive so the
-/music-and-events/ page itself keeps resolving normally).
-
-That page is rendered by the plugin's own template unless the theme provides
-one. See Settings > Event Pages. For a repeating event the page shows the date
-that was clicked, resolved from the ?occ= parameter and validated against the
-event's real dates, plus a list of its other upcoming nights.
-
-= Frontend meta keys (Cornerstone Dynamic Content) =
-
-Reference these inside a Looper Consumer with {{dc:post:meta key="..."}}:
-
-* abm_date_display     "26 Jun" (uses the global Date Format setting)
-* abm_time_display     "8:00 PM - Close"
-* abm_cost_display     "$10" (door cost; empty when free/unset)
-* abm_flyer_url        flyer URL = Featured Image (falls back to the placeholder)
-* abm_ical             per-event .ics download link
-* abm_gcal             Google Calendar "add event" link
-* abm_event_date       Y-m-d (raw — use for Looper sorting / upcoming filters)
-* abm_event_time_start H:i (raw)
-* abm_event_time_end   H:i or "close" (raw)
-* abm_flyer_id         flyer attachment ID (mirrors the Featured Image)
-
-= REST API =
-
-Event meta is exposed on wp/v2/abm_event, so a whole event including its
-recurrence rule can be created or edited in one authenticated call.
-
-Each event also carries a read-only abm_occurrences object:
-
-* count   how many dates this event currently has
-* next    its next upcoming date (Y-m-d), or empty if it has none left
-* locked  true when the dates cannot be changed by editing abm_event_date
-
-locked is true for an event imported from another calendar: its dates were
-copied verbatim and it has no recurrence rule, so regenerating it would
-collapse it to a single date, and the plugin refuses. Writing abm_event_date to
-such an event succeeds and changes the displayed date strings, but the calendar
-keeps showing the imported dates. Give the event a recurrence rule to take over
-from the import, or delete and recreate it. Everything other than the dates --
-title, times, cost, categories, content, flyer -- edits normally.
-
-Check it before editing dates:
-
-  GET /wp-json/wp/v2/abm_event/<id>?_fields=id,abm_occurrences
-
-The object costs one database query per event and is only computed when asked
-for, so listing events with _fields that omit it is free.
-
-= Cornerstone Looper setup (events calendar page) =
-
-1. Add a Looper Provider element. Set Query Builder:
-   * Post Type: Event (abm_event)
-   * Order By: Meta Value, Meta Key: abm_event_date, Order: ASC
-   * (Upcoming only) Meta Query: key abm_event_date, compare >=, value {{dc:date format="Y-m-d"}}, type DATE
-2. Inside the Consumer, add elements and bind via Dynamic Content:
-   * Image source:  {{dc:post:meta key="abm_flyer_url"}}
-   * Heading:       {{dc:post:title}}
-   * Date text:     {{dc:post:meta key="abm_date_display"}}
-   * Time text:     {{dc:post:meta key="abm_time_display"}}
-   * Category:      {{dc:post:terms taxonomy="abm_category"}}  (or [abm_event_category])
-   * Link to event: {{dc:post:permalink}}
+== Reference ==
 
 = Calendar shortcode =
 
-[abm_calendar]
+`[abm_calendar]`
 
-Outputs a month-grouped list of upcoming events (flyer, title, short description,
-date, time, category, cost) with a "Load More" button that pulls the next batch
-over AJAX. The description is the event's excerpt, or its trimmed content when no
-excerpt is set, and is omitted entirely for events that have neither.
-The number loaded initially and per Load More click are set under Settings >
-Calendar Shortcode, and can be overridden per placement:
+A month-grouped list of upcoming events -- flyer, title, short description, date,
+time, category and cost -- with a Load More button that pulls the next batch over
+AJAX. The description is the event's excerpt, or its trimmed content when there
+is no excerpt, and is omitted for events with neither.
 
-  [abm_calendar initial="8" more="6"]
+Batch sizes are set under Settings > Calendar Shortcode and can be overridden per
+placement:
 
-Category tags (Music, Event, …) in the list are controlled by a global toggle
-(Settings > Calendar Shortcode > Category Tags). Each event can override it under
-Event Details > Category Tag: Default (follow the global setting), Show, or Hide.
+`[abm_calendar initial="8" more="6"]`
 
-Recolor the accent (icons / Load More hover) by overriding the CSS variable, e.g.
-  .abm-calendar { --abm-accent: #d6006e; }
+Filter to one category:
 
-= Field shortcodes (Dynamic Content bridge + export buttons) =
+`[abm_calendar category="music"]`
 
-Use inside a Looper Consumer (they read the current event), or pass id="123":
+Category tags in the list follow a global toggle (Settings > Calendar Shortcode >
+Category Tags). Each event can override it under Event Details > Category Tag:
+Default, Show, or Hide.
 
-* [abm_event_date]                 -> global Date Format (e.g. "26 Jun")
-* [abm_event_date format="l, F jS"] -> per-tag override, e.g. "Saturday, June 21st"
-* [abm_event_time]                 -> "8:00 PM - Close"
-* [abm_event_category sep=", "]    -> category names
-* [abm_cost]                       -> formatted door cost
-* [abm_flyer_url size="large"]     -> flyer/placeholder URL
-* [abm_flyer size="large"]         -> <img> flyer/placeholder
-* [abm_ical]                       -> .ics URL
-* [abm_gcal]                       -> Google Calendar URL
-* [abm_event_export]               -> Google Calendar + iCal buttons
+= Field shortcodes =
+
+Use inside a Looper Consumer, where they read the current event, or pass
+`id="123"`:
+
+* `[abm_event_date]` -- formatted with the global Date Format
+* `[abm_event_date format="l, F jS"]` -- per-tag override
+* `[abm_event_time]` -- "8:00 PM - Close"
+* `[abm_event_category sep=", "]` -- category names
+* `[abm_cost]` -- formatted door cost
+* `[abm_flyer_url size="large"]` -- flyer or placeholder URL
+* `[abm_flyer size="large"]` -- flyer as an `<img>`
+* `[abm_ical]` -- .ics URL
+* `[abm_gcal]` -- Google Calendar URL
+* `[abm_event_export]` -- both export buttons
+
+= Meta keys for Dynamic Content =
+
+Reference these inside a Looper Consumer with `{{dc:post:meta key="..."}}`:
+
+* `abm_date_display` -- "26 Jun", using the global Date Format
+* `abm_time_display` -- "8:00 PM - Close"
+* `abm_cost_display` -- "$10", empty when free or unset
+* `abm_flyer_url` -- flyer URL, falling back to the placeholder
+* `abm_ical` -- per-event .ics link
+* `abm_gcal` -- Google Calendar link
+* `abm_event_date` -- Y-m-d, raw; use for Looper sorting and upcoming filters
+* `abm_event_time_start` -- H:i, raw
+* `abm_event_time_end` -- H:i or "close", raw
+* `abm_flyer_id` -- flyer attachment ID, mirroring the Featured Image
+
+Display values are generated on save. Do not write to them.
+
+= Cornerstone Looper setup =
+
+1. Add a Looper Provider element. Either choose the plugin's own provider, which
+   loops over dates, or use Query Builder with:
+   * Post Type: Event (abm_event)
+   * Order By: Meta Value, Meta Key: abm_event_date, Order: ASC
+   * Upcoming only: Meta Query, key `abm_event_date`, compare `>=`, value
+     `{{dc:date format="Y-m-d"}}`, type DATE
+2. Inside the Consumer, bind elements through Dynamic Content:
+   * Image source: `{{dc:post:meta key="abm_flyer_url"}}`
+   * Heading: `{{dc:post:title}}`
+   * Date: `{{dc:post:meta key="abm_date_display"}}`
+   * Time: `{{dc:post:meta key="abm_time_display"}}`
+   * Category: `{{dc:post:terms taxonomy="abm_category"}}`
+   * Link: `{{dc:post:permalink}}`
+
+Query Builder loops over posts, so a repeating event appears once. Use the
+plugin's provider, or `[abm_calendar]`, for a listing that shows every date.
+
+= REST API =
+
+Event meta is exposed on `wp/v2/abm_event`, so a whole event including its
+recurrence rule can be created or edited in one authenticated call.
+
+Each event also carries a read-only `abm_occurrences` object:
+
+* `count` -- how many dates the event currently has
+* `next` -- its next upcoming date (Y-m-d), or empty if it has none left
+* `locked` -- true when the dates cannot be changed by editing the date field
+
+Check it before editing dates:
+
+`GET /wp-json/wp/v2/abm_event/<id>?_fields=id,abm_occurrences`
+
+The object costs one query per event and is only computed when asked for, so
+listing events with `_fields` that omit it is free.
+
+= CSV import =
+
+Events > Import accepts a CSV exported from another calendar plugin. The format
+is auto-detected or chosen manually, and the importer framework
+(`includes/importers/`) takes additional formats as subclasses of `ABM_Importer`.
+
+Options: publish or draft; reuse images already in the Media Library; download
+images on or off; update events previously imported from the same source, matched
+by source ID; and a dry run that reports counts without writing anything.
+
+Reusing existing images matters when moving from another plugin on the same site,
+where the flyers are already in your Media Library. The importer matches each
+event's image URL to an existing attachment -- by exact URL, then by local
+uploads path, then by filename, so differing CDN hosts still match -- and reuses
+it rather than downloading a duplicate.
+
+Importing is restricted to administrators. The upload is validated (.csv, tab,
+comma or semicolon auto-detected, BOM-tolerant, 5 MB cap) and only HTTP(S) image
+URLs are fetched.
+
+**This importer is not the right tool for Modern Events Calendar.** It keys on
+the source event ID, so every date of a repeating event collapses onto one
+record. Use Migrate & Tools instead.
 
 == Updates ==
 
@@ -303,6 +376,20 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.15.1 =
+Documentation, and the details modal that renders it.
+* The Description now describes the plugin. It was a technical reference written
+  for whoever was maintaining the site it started on -- accurate, but it never
+  said what the plugin is or who it is for, which is the one thing a plugin page
+  has to do.
+* That reference material was not thrown away. Setup moved to Installation, the
+  things that surprise people moved to Frequently Asked Questions, and the meta
+  keys, shortcodes, Looper setup and REST notes moved to Reference. All four are
+  tabs in the details modal.
+* Fix: numbered steps in readme.txt rendered as one run-on paragraph in the
+  modal, because only "*" bullets were recognised. "1." is a numbered list now,
+  and switching between the two closes the open list rather than mixing markers.
 
 = 2.15.0 =
 * "View details" on the Plugins screen opens a real details modal instead of

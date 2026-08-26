@@ -245,6 +245,8 @@ class ABM_Updater {
 		foreach ( array(
 			'description'  => 'Description',
 			'installation' => 'Installation',
+			'faq'          => 'Frequently Asked Questions',
+			'reference'    => 'Reference',
 			'updates'      => 'Updates',
 			'notes'        => 'Notes',
 			'changelog'    => 'Changelog',
