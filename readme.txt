@@ -4,129 +4,77 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.15.2
+Stable tag: 2.15.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-An events calendar for venues: repeating nights, flyers, cover charge, and iCal / Google Calendar exports that understand a whole series.
+An events calendar for venues. Post your shows with a flyer, times and cover charge, and let visitors add any date to their own calendar.
 
 == Description ==
 
-Arkon Event Manager is an events calendar for places that run a regular
-programme -- music rooms, bars, theatres, community halls. It covers what a
-listings page actually needs and stops there: a flyer, a start and end time, a
-door charge, a category, a description, and nights that repeat.
+Arkon Event Manager is an events calendar for venues. Add a show with its flyer,
+times, cover charge and category, then put the calendar on any page with one
+shortcode.
 
-Add `[abm_calendar]` to a page and you have a calendar. Every event also gets its
-own page, and every date can be added to a visitor's calendar in one click.
+It suits places with a regular programme: music venues, bars, theatres and
+community halls, where the same nights come round every week.
 
-= One event, many dates =
+= Enter a weekly night once =
 
-One design decision separates this from most calendar plugins. A repeating event
-is **a single event with many dates**, not many copies of an event, and each of
-those dates is a real row the calendar can sort, filter and page through in SQL.
+Set a night to repeat and it shows up on every date it runs. You enter it once
+instead of creating a new event every week, and your admin does not fill up with
+fifty copies of the same show.
 
-That matters more than it sounds. On a venue calendar a couple of weekly fixtures
-are usually most of the listings -- a Monday night and a Tuesday night can easily
-be three quarters of everything on the page. A calendar that loops over *posts*
-renders each of those once and silently drops the rest of the month. Here the
-listing, the exports, the category archives and the importer all read dates, so a
-weekly night appears on every night it runs.
+Events can repeat daily, weekly, monthly on a date, or monthly on a weekday. Set
+an interval, give it an end date, or list the dates to skip for holidays.
 
-It also means paging is stable. The calendar walks a cursor over dates rather
-than counting posts, so publishing an event while a visitor is part-way down the
-list cannot make a row repeat or disappear.
+= Visitors can save the whole run =
+
+Every event has "Add to Google Calendar" and "Download iCal" buttons. On a
+repeating night those save the entire series rather than the single date being
+viewed, so a regular adds your Tuesday open mic once and has it every week.
+
+= Late nights display correctly =
+
+A show from 8pm to 1am stays on the night it starts and reads "8:00 PM - 1:00 AM"
+instead of splitting across two days. Nights that run until closing can simply
+say "Close".
 
 = Features =
 
-* Events with a date, a start time and an end time -- including a literal
-  "Close" for nights that end when the bar does.
-* Repeating events: daily, weekly, monthly on the same date, or monthly on the
-  same weekday. Each takes an interval, an optional end date or occurrence
-  count, and a list of dates to skip for holidays.
-* Open-ended repeats generate a configurable window ahead (24 months by default)
-  and a daily task rolls the window forward, so they never run dry.
-* Shows that run past midnight stay one listing on the night they start, read
-  "8:00 PM - 1:00 AM", and export with the right finish time.
-* A flyer per event, taken from the Featured Image, with a global placeholder
-  for events that have none.
-* Editable event categories, with archive pages that use the same layout as the
-  calendar.
-* A door charge, formatted with your currency symbol, or nothing at all when the
-  night is free.
-* `[abm_calendar]` -- a month-grouped list with collapsible months and a Load
-  More button that pages over AJAX.
-* A page per event, rendered by the plugin when your theme has no template for
-  it, showing the night that was clicked and the other nights still to come.
-* iCal download and "Add to Google Calendar" links on every event. For a
-  repeating event these describe the **whole series**, so a weekly night is
-  saved once rather than every week.
-* An importer that moves a calendar over from Modern Events Calendar without
-  losing a date.
-* Redirects that keep the old plugin's event URLs working after the move.
-* Self-updating from GitHub releases, using the `Update URI` mechanism built
-  into WordPress rather than a bundled updater library.
+* Flyer, date, start and end time, cover charge, category and description
+* Repeating events, with holiday dates skipped
+* `[abm_calendar]` shortcode: a month by month list with a Load More button
+* A page for every event, showing its other upcoming dates
+* Category pages
+* Google Calendar and iCal export on every event
+* Import from Modern Events Calendar with every date intact
+* Old event links keep working after you switch
+* Works with any theme, with extra support for Themeco Pro and Cornerstone
 
-= Exports that describe the series =
+= Who it is for =
 
-Handing someone a single night is not much use when the event runs every week.
-Both exports describe the series from the night being viewed forward, so no past
-dates are added and the visitor saves it once.
+* Music venues and bars listing shows, residencies and weekly nights
+* Theatres and cinemas with a rolling programme
+* Community halls, clubs and societies with regular meetings
+* Anyone who wants a listings page rather than a full event management suite
 
-Events with a recurrence rule are exported from that rule. Events imported from
-another calendar have no rule -- their dates were copied across verbatim -- so
-the pattern is recovered from the dates themselves: weekly, every-N-weekly,
-monthly on a date, and monthly on the nth weekday, with any skipped nights
-carried through as exceptions. Where no pattern fits, the `.ics` lists the dates
-individually rather than inventing a rule that would put the wrong nights in
-someone's calendar.
+= Moving from another calendar =
 
-The `.ics` is the faithful export of the two. The Google Calendar link carries
-the rule but not the exceptions, because that format allows a single line and a
-URL cannot contain a line break.
+If you are on Modern Events Calendar, the built in importer reads its data
+directly and brings every event across with all of its dates, its flyers and its
+categories. Your existing event links carry on working, so nothing you have
+posted or linked to breaks.
 
-= Works with your theme, or with Cornerstone =
+= Works with your theme =
 
-The shortcode needs nothing but a page, and the event template steps aside the
-moment your theme provides one of its own.
+Add the shortcode to a page and you have a calendar. Events get their own pages
+too, and if your theme has its own event template the plugin steps aside and
+lets it render.
 
-If you build with Themeco Pro or Cornerstone, the plugin also registers a Looper
-Provider that loops over **dates rather than posts**, and every field is exposed
-as pre-formatted post meta for Dynamic Content -- so a bespoke layout needs no
-PHP. See Reference below.
-
-= Coming from another calendar plugin =
-
-Migrate & Tools imports directly from a Modern Events Calendar install in the
-same database, reading MEC's own occurrence table and copying every date exactly
-as it stood. It reuses flyers already in your Media Library instead of
-re-downloading them, maps categories by name, and records each event's original
-slug so old links keep resolving.
-
-Because MEC's schema has changed between versions, the importer resolves every
-table and column at run time and reports what it found. If it cannot recognise
-the occurrence table it refuses to write rather than importing one date per
-event -- that failure otherwise looks like a successful import until somebody
-notices the calendar is empty. Run the preview first: it lists the events
-contributing the most dates, so a weekly event showing a single date is obvious
-straight away.
-
-A CSV importer is included for other sources, but do not use it for MEC. See the
-FAQ.
-
-= For developers =
-
-Events are a normal post type (`abm_event`) with a normal taxonomy
-(`abm_category`). Dates live in their own table, one row per event per date, and
-every consumer reads that table.
-
-Event meta is exposed over the REST API, so a complete event -- dates, times,
-cost, recurrence, categories, flyer -- can be created or edited in a single
-authenticated call. Each event also carries a read-only `abm_occurrences` object
-reporting how many dates it has, its next one, and whether its dates are locked.
-
-Uninstalling removes the plugin's settings, the date table and its scheduled
-task. Your events, their meta and your categories are left alone.
+Building with Themeco Pro or Cornerstone? Every field is available to Dynamic
+Content, and the plugin adds a Looper Provider so you can design your own
+listing layout without writing any code.
 
 == Installation ==
 
@@ -376,6 +324,12 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.15.3 =
+* The Description is written for someone deciding whether to install the plugin.
+  It opened with the data model and argued its design decisions, which is the
+  wrong thing for a plugin page to do. It now says what the plugin is, who it
+  suits, and what it does, in about half the length.
 
 = 2.15.2 =
 Fix only, both in how readme.txt is rendered in the details modal.
