@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.17.0
+Stable tag: 2.17.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -398,6 +398,20 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.17.1 =
+Fix only, in how a pasted booking list is read.
+* A line asking for artwork on a show that already exists no longer creates a
+  second show. `Add flyer 9-12 Jack the Radio day party` and
+  `Change 9-25 flyer (change Rodney Henry to Stephen Clair)` were read as new
+  events named after the flyer. They are listed with the other things to handle
+  by hand instead.
+* Told apart by what the instruction acts on: the verb taking a flyer as its
+  object, or a change that mentions one at all. A trailing reminder is
+  different — `Add Aug 22nd Pickled 8:00-11:00pm and add flyer` is still a real
+  new show and still becomes one.
+* Lines beneath such an instruction are kept with it rather than listed
+  separately, so an instruction spanning several lines reads as one thing.
 
 = 2.17.0 =
 * Bulk Add attaches flyers for you. Upload the folder to the Media Library and

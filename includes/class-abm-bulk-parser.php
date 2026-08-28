@@ -78,7 +78,8 @@ class ABM_Bulk_Parser {
 		$skipped = array();
 		$lines   = preg_split( '/\R/', (string) $text );
 
-		$current = null;
+		$current     = null;
+		$open_action = null;
 
 		$flush = static function () use ( &$current, &$rows, &$skipped ) {
 			if ( null === $current ) {
@@ -105,6 +106,7 @@ class ABM_Bulk_Parser {
 
 			if ( '' === $line || '#' === substr( $line, 0, 1 ) ) {
 				$flush();
+				$open_action = null; // A blank line ends an instruction as well as an entry.
 				continue;
 			}
 			if ( strlen( $line ) > self::MAX_LINE ) {
@@ -116,11 +118,14 @@ class ABM_Bulk_Parser {
 			if ( $row ) {
 				$flush();
 
-				if ( 'remove' === $row['verb'] ) {
-					// Never created, never silently dropped.
-					$actions[] = $line;
+				// Removals, and instructions about a flyer on an event that already
+				// exists. Never created, never silently dropped.
+				if ( in_array( $row['verb'], array( 'remove', 'flyer' ), true ) ) {
+					$actions[]   = $line;
+					$open_action = count( $actions ) - 1;
 					continue;
 				}
+				$open_action = null;
 
 				if ( 'change' === $row['verb'] ) {
 					/*
@@ -176,6 +181,17 @@ class ABM_Bulk_Parser {
 				}
 
 				$current['description'] = '' === $current['description'] ? $line : $current['description'] . "\n" . $line;
+				continue;
+			}
+
+			/*
+			 * A line under an instruction belongs to it. An entry asking for a
+			 * change often carries its title and details on the lines beneath, and
+			 * splitting those across the "not read" list would leave the reader
+			 * assembling one instruction from two places.
+			 */
+			if ( null !== $open_action ) {
+				$actions[ $open_action ] .= "\n" . $line;
 				continue;
 			}
 
@@ -307,6 +323,31 @@ class ABM_Bulk_Parser {
 			// content: "Add Sept 27 ..." yes, "Added Attractions" no.
 			if ( strlen( $m[0] ) < 40 && ! preg_match( '/\d/', $phrase ) ) {
 				$line = substr( $line, strlen( $m[0] ) );
+			}
+
+			/*
+			 * Some lines are about the artwork, not about an event:
+			 *
+			 *     Add flyer 9-12 Jack the Radio day party
+			 *     Change flyer 9-10 day party flyer
+			 *     Change 9-25 flyer (change Rodney Henry to Stephen Clair)
+			 *
+			 * Every one names a show that is already on the calendar and asks for
+			 * its flyer to be attached or swapped. Read as additions they create
+			 * events called "day party flyer" and "(change Rodney Henry to Stephen
+			 * Clair)" -- worse than useless, because they look like real listings.
+			 *
+			 * Two shapes give it away. The verb takes "flyer" as its object
+			 * ("Add flyer ..."), or the instruction is a change and mentions one at
+			 * all -- changing a flyer is by definition work on an event that
+			 * exists. Note "Add ... and add flyer" is neither: there the flyer is a
+			 * trailing reminder on a genuine new show.
+			 */
+			$is_flyer_object = (bool) preg_match( '/^\s*(?:the\s+|a\s+)?flyers?\b/i', $line );
+			$mentions_flyer  = (bool) preg_match( '/\bflyers?\b/i', $line );
+
+			if ( $is_flyer_object || ( 'change' === $verb && $mentions_flyer ) ) {
+				$verb = 'flyer';
 			}
 		}
 
