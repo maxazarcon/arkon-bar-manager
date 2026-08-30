@@ -8,3 +8,9 @@ Thumbs.db
 
 # Build output — releases are produced from this tree, not stored in it
 *.zip
+
+# Claude Code working notes — deployment specifics, not part of the plugin
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.mcp.json
