@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.17.1
+Stable tag: 2.17.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -398,6 +398,14 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.17.2 =
+Fix only, in the admin events list.
+* The Date column shows the year. It used the calendar's date format, which
+  usually leaves the year out, so a list spanning several years could not tell
+  one 12 Mar from another. The calendar itself is unchanged.
+* A finished event's date carries the year too; it was read from a stored
+  display string formatted the same way.
 
 = 2.17.1 =
 Fix only, in how a pasted booking list is read.

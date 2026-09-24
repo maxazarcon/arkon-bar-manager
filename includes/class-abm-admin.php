@@ -333,16 +333,21 @@ class ABM_Admin {
 				// The next date this actually happens, not abm_date_display —
 				// that is the series *start*, so a weekly night running since
 				// 2019 would show 2019 here for ever.
+				// Always with the year: the front-end format (Settings › Date
+				// Format) usually omits it, which is ambiguous in a list that
+				// spans several years.
 				$next = ABM_Occurrences::next_date( $post_id );
 				if ( $next ) {
-					echo esc_html( abm_format_date( $next ) );
+					echo esc_html( abm_format_date( $next, 'j M Y' ) );
 					if ( ABM_Occurrences::is_recurring( $post_id ) ) {
 						echo ' <span class="abm-repeats" title="' . esc_attr__( 'Repeats', 'arkon-bar-manager' ) . '">&#8635;</span>';
 					}
 				} else {
-					$display = get_post_meta( $post_id, 'abm_date_display', true );
-					// No upcoming date: show the last one it had, so a finished
-					// event still reads sensibly instead of as a dash.
+					// No upcoming date: show the date it had, so a finished
+					// event still reads sensibly instead of as a dash. Formatted
+					// from the raw meta rather than abm_date_display, which
+					// carries the front-end format and so no year.
+					$display = abm_format_date( get_post_meta( $post_id, 'abm_event_date', true ), 'j M Y' );
 					echo $display ? '<span style="color:#888">' . esc_html( $display ) . '</span>' : '&mdash;';
 				}
 				break;
