@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.17.2
+Stable tag: 2.18.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -398,6 +398,12 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 2.18.0 =
+* The public event API lists each event's upcoming dates. `abm_occurrences.dates`
+  is read-only, soonest first, `Y-m-d`, and at most 120 dates. `count`, `next`
+  and `locked` are unchanged. A date written to a locked event still does not
+  move the calendar.
 
 = 2.17.2 =
 Fix only, in the admin events list.

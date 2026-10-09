@@ -135,8 +135,9 @@ class ABM_Meta {
 	 * regenerated. That silence is the entire reason this field exists.
 	 *
 	 * Read-only: no update_callback is registered, so it cannot be written.
-	 * Costs one query per event, and only when the field is actually requested --
-	 * core skips additional fields left out of ?_fields=.
+	 * The summary is one query and the date list is a second, bounded query.
+	 * Both run only when the field is actually requested -- core skips
+	 * additional fields left out of ?_fields=.
 	 */
 	public function register_rest_fields() {
 		register_rest_field(
@@ -145,7 +146,7 @@ class ABM_Meta {
 			array(
 				'get_callback' => array( $this, 'rest_occurrence_info' ),
 				'schema'       => array(
-					'description' => __( 'Read-only: how many dates this event has, its next upcoming date, and whether its dates are locked because they were imported verbatim.', 'arkon-bar-manager' ),
+					'description' => __( 'Read-only: how many dates this event has, its next upcoming date, whether its dates are locked because they were imported verbatim, and the upcoming dates themselves.', 'arkon-bar-manager' ),
 					'type'        => 'object',
 					'context'     => array( 'view', 'edit' ),
 					'readonly'    => true,
@@ -153,6 +154,11 @@ class ABM_Meta {
 						'count'  => array( 'type' => 'integer' ),
 						'next'   => array( 'type' => 'string' ),
 						'locked' => array( 'type' => 'boolean' ),
+						'dates'  => array(
+							'description' => __( 'Upcoming dates, soonest first, Y-m-d. At most 120.', 'arkon-bar-manager' ),
+							'type'        => 'array',
+							'items'       => array( 'type' => 'string' ),
+						),
 					),
 				),
 			)
@@ -161,10 +167,13 @@ class ABM_Meta {
 
 	/**
 	 * @param array $post Prepared post response data.
-	 * @return array{count:int,next:string,locked:bool}
+	 * @return array{count:int,next:string,locked:bool,dates:string[]}
 	 */
 	public function rest_occurrence_info( $post ) {
-		return ABM_Occurrences::stats_for( isset( $post['id'] ) ? (int) $post['id'] : 0 );
+		$post_id       = isset( $post['id'] ) ? (int) $post['id'] : 0;
+		$info          = ABM_Occurrences::stats_for( $post_id );
+		$info['dates'] = ABM_Occurrences::upcoming_dates( $post_id );
+		return $info;
 	}
 
 	/**
