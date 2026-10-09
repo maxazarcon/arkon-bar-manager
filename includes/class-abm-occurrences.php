@@ -45,6 +45,14 @@ class ABM_Occurrences {
 	/** Hard ceiling on rows generated for a single event, whatever the rule says. */
 	const MAX_ROWS_PER_EVENT = 1000;
 
+	/**
+	 * Upcoming dates included on the public REST field.
+	 *
+	 * A weekly event across the default 24-month horizon is about a hundred
+	 * nights. 120 covers that without returning a thousand historical rows.
+	 */
+	const REST_DATES_LIMIT = 120;
+
 	const CRON_HOOK = 'abm_extend_occurrences';
 
 	/**
@@ -837,6 +845,36 @@ class ABM_Occurrences {
 			'next'   => ( $row && $row->nxt ) ? (string) $row->nxt : '',
 			'locked' => self::is_protected_explicit( $post_id, $count ),
 		);
+	}
+
+	/**
+	 * Upcoming occurrence dates for one event, soonest first.
+	 *
+	 * The public REST field uses this. dates_from() loads the whole history,
+	 * up to MAX_ROWS_PER_EVENT, which is the wrong cost when the field runs
+	 * once per event on a list page.
+	 *
+	 * @param int $post_id Event ID.
+	 * @return string[] Y-m-d, ascending, at most REST_DATES_LIMIT.
+	 */
+	public static function upcoming_dates( $post_id ) {
+		global $wpdb;
+
+		$table = self::table();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT DISTINCT occur_date FROM {$table}
+				 WHERE post_id = %d AND occur_date >= %s
+				 ORDER BY occur_date ASC LIMIT %d",
+				(int) $post_id,
+				current_time( 'Y-m-d' ),
+				self::REST_DATES_LIMIT
+			)
+		);
+
+		return array_map( 'strval', (array) $rows );
 	}
 
 	/**
