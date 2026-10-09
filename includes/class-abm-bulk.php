@@ -353,7 +353,7 @@ class ABM_Bulk {
 				<?php endif; ?>
 			</td>
 			<td>
-				<input type="text" name="<?php echo esc_attr( $name ); ?>[cost]" value="<?php echo esc_attr( $row['cost'] ); ?>" />
+				<input type="text" name="<?php echo esc_attr( $name ); ?>[cost]" value="<?php echo esc_attr( abm_cost_is_none( $row['cost'] ) ? __( 'No cover', 'arkon-bar-manager' ) : $row['cost'] ); ?>" />
 			</td>
 			<td>
 				<select name="<?php echo esc_attr( $name ); ?>[category]">
@@ -507,7 +507,7 @@ class ABM_Bulk {
 
 		$row['date']        = abm_sanitize_date( $row['date'] );
 		$row['title']       = sanitize_text_field( (string) $row['title'] );
-		$row['cost']        = sanitize_text_field( (string) $row['cost'] );
+		$row['cost']        = abm_normalize_cost( $row['cost'] );
 		$row['description'] = sanitize_textarea_field( (string) $row['description'] );
 		$row['start']       = $this->clean_time( $row['start'] );
 		$row['end']         = $this->clean_time( $row['end'], true );

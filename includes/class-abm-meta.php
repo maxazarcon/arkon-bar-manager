@@ -218,7 +218,17 @@ class ABM_Meta {
 		$date  = get_post_meta( $post->ID, 'abm_event_date', true );
 		$start = get_post_meta( $post->ID, 'abm_event_time_start', true );
 		$end   = get_post_meta( $post->ID, 'abm_event_time_end', true );
-		$cost  = get_post_meta( $post->ID, 'abm_event_cost', true );
+		$cost  = (string) get_post_meta( $post->ID, 'abm_event_cost', true );
+		if ( abm_cost_is_none( $cost ) ) {
+			$cover_mode = 'none';
+			$cost_value = '';
+		} elseif ( '' !== trim( $cost ) ) {
+			$cover_mode = 'amount';
+			$cost_value = $cost;
+		} else {
+			$cover_mode = '';
+			$cost_value = '';
+		}
 		$showcat = get_post_meta( $post->ID, 'abm_show_category', true );
 
 		$is_close = ( 'close' === $end );
@@ -349,10 +359,17 @@ class ABM_Meta {
 			</fieldset>
 
 			<p>
-				<label for="abm_event_cost"><strong><?php esc_html_e( 'Event Cost', 'arkon-bar-manager' ); ?></strong></label><br />
-				<input type="text" id="abm_event_cost" name="abm_event_cost" value="<?php echo esc_attr( $cost ); ?>" placeholder="<?php esc_attr_e( 'e.g. 10 or Free', 'arkon-bar-manager' ); ?>" />
+				<label for="abm_cover_mode"><strong><?php esc_html_e( 'Cover', 'arkon-bar-manager' ); ?></strong></label><br />
+				<select id="abm_cover_mode" name="abm_cover_mode">
+					<option value="" <?php selected( $cover_mode, '' ); ?>><?php esc_html_e( 'Not specified', 'arkon-bar-manager' ); ?></option>
+					<option value="none" <?php selected( $cover_mode, 'none' ); ?>><?php esc_html_e( 'No cover', 'arkon-bar-manager' ); ?></option>
+					<option value="amount" <?php selected( $cover_mode, 'amount' ); ?>><?php esc_html_e( 'Amount', 'arkon-bar-manager' ); ?></option>
+				</select>
+				<span class="abm-cover-amount"<?php echo 'amount' === $cover_mode ? '' : ' hidden'; ?>>
+					<input type="text" id="abm_event_cost" name="abm_event_cost" value="<?php echo esc_attr( $cost_value ); ?>" placeholder="<?php esc_attr_e( 'e.g. 10 or Free', 'arkon-bar-manager' ); ?>" />
+				</span>
 				<br />
-				<small><?php esc_html_e( 'Leave empty for no cover. A plain number gets the currency symbol (10 → $10); text such as "Free" shows as typed.', 'arkon-bar-manager' ); ?></small>
+				<small><?php esc_html_e( 'Not specified leaves the cover line off the event page. No cover prints "No cover". A plain number gets the currency symbol (10 → $10); text such as "Free" shows as typed.', 'arkon-bar-manager' ); ?></small>
 			</p>
 
 			<p>
@@ -405,7 +422,14 @@ class ABM_Meta {
 			$end = abm_sanitize_time( wp_unslash( $_POST['abm_event_time_end'] ?? '' ) );
 		}
 
-		$cost = sanitize_text_field( wp_unslash( $_POST['abm_event_cost'] ?? '' ) );
+		$cover_mode = isset( $_POST['abm_cover_mode'] ) ? sanitize_key( wp_unslash( $_POST['abm_cover_mode'] ) ) : '';
+		if ( 'none' === $cover_mode ) {
+			$cost = ABM_COST_NONE;
+		} elseif ( 'amount' === $cover_mode ) {
+			$cost = abm_normalize_cost( wp_unslash( $_POST['abm_event_cost'] ?? '' ) );
+		} else {
+			$cost = '';
+		}
 
 		$show_cat = isset( $_POST['abm_show_category'] ) ? sanitize_key( wp_unslash( $_POST['abm_show_category'] ) ) : '';
 		if ( ! in_array( $show_cat, array( 'show', 'hide' ), true ) ) {

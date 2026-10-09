@@ -99,5 +99,15 @@
 		} );
 
 		syncRecur();
+
+		// Cover: the amount box only applies when an amount was chosen.
+		function syncCover() {
+			var isAmount = $( '#abm_cover_mode' ).val() === 'amount';
+			$( '.abm-cover-amount' ).prop( 'hidden', ! isAmount );
+			$( '#abm_event_cost' ).prop( 'disabled', ! isAmount );
+		}
+
+		$( document ).on( 'change', '#abm_cover_mode', syncCover );
+		syncCover();
 	} );
 } )( jQuery );

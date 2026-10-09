@@ -169,9 +169,38 @@ function abm_format_time_range( $start, $end ) {
 }
 
 /**
+ * Stored in abm_event_cost when the editor chooses No cover. Empty means the
+ * cover was never specified, and the event page leaves that line off.
+ */
+const ABM_COST_NONE = 'none';
+
+/**
+ * Whether a stored or pasted cost means the explicit No cover choice.
+ *
+ * @param string $raw Raw cost value.
+ * @return bool
+ */
+function abm_cost_is_none( $raw ) {
+	$raw = strtolower( trim( (string) $raw ) );
+	return in_array( $raw, array( ABM_COST_NONE, 'no cover', 'no-cover' ), true );
+}
+
+/**
+ * Keep an explicit No cover as the sentinel and leave every other cost as typed.
+ *
+ * @param string $raw Raw cost value.
+ * @return string
+ */
+function abm_normalize_cost( $raw ) {
+	$raw = sanitize_text_field( trim( (string) $raw ) );
+	return abm_cost_is_none( $raw ) ? ABM_COST_NONE : $raw;
+}
+
+/**
  * Format an event cost for display. A plain number gets the currency symbol
  * (e.g. "10" -> "$10", "7.5" -> "$7.50"); any other text passes through as
- * entered (e.g. "Free", "$5 / $10 door"). Empty returns ''.
+ * entered (e.g. "Free", "$5 / $10 door"). An explicit No cover returns
+ * "No cover". Empty returns ''.
  *
  * @param string $raw Raw cost value.
  * @return string
@@ -180,6 +209,9 @@ function abm_format_cost( $raw ) {
 	$raw = trim( (string) $raw );
 	if ( '' === $raw ) {
 		return '';
+	}
+	if ( abm_cost_is_none( $raw ) ) {
+		return __( 'No cover', 'arkon-bar-manager' );
 	}
 	$symbol = abm_get_setting( 'currency_symbol', '$' );
 	if ( is_numeric( $raw ) ) {

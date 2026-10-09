@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.18.0
+Stable tag: 3.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -279,7 +279,7 @@ Reference these inside a Looper Consumer with `{{dc:post:meta key="..."}}`:
 
 * `abm_date_display` -- "26 Jun", using the global Date Format
 * `abm_time_display` -- "8:00 PM - Close"
-* `abm_cost_display` -- "$10", empty when free or unset
+* `abm_cost_display` -- "$10", "No cover" when that was chosen, empty when cover was not specified
 * `abm_flyer_url` -- flyer URL, falling back to the placeholder
 * `abm_ical` -- per-event .ics link
 * `abm_gcal` -- Google Calendar link
@@ -398,6 +398,14 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 3.0.0 =
+* The event page leaves the cover line off when no cover was entered. Choosing
+  No cover in the event editor prints "No cover". A number still becomes the
+  currency amount (10 → $10), and other text such as "Free" still shows as typed.
+* The calendar row, the add-to-calendar text and `[abm_cost]` follow the same
+  rule.
+* Bulk Add reads "no cover" and "no charge" as No cover. "Free" still stores 0.
 
 = 2.18.0 =
 * The public event API lists each event's upcoming dates. `abm_occurrences.dates`
