@@ -227,7 +227,10 @@ class ABM_Bulk_Parser {
 		if ( preg_match( '/(?<![\w.])(?:\$\s?(\d+(?:\.\d{2})?)|(\d+(?:\.\d{2})?)\s*(?:dollars?|bucks)\b)/i', $line, $m ) ) {
 			$cost = '' !== $m[1] ? $m[1] : $m[2];
 			$line = self::cut( $line, $m[0] );
-		} elseif ( preg_match( '/\b(?:free|no cover|free entry|no charge)\b/i', $line, $m ) ) {
+		} elseif ( preg_match( '/\b(?:no cover|no charge)\b/i', $line, $m ) ) {
+			$cost = ABM_COST_NONE;
+			$line = self::cut( $line, $m[0] );
+		} elseif ( preg_match( '/\b(?:free|free entry)\b/i', $line, $m ) ) {
 			$cost = '0';
 			$line = self::cut( $line, $m[0] );
 		}

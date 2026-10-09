@@ -158,12 +158,12 @@ while ( have_posts() ) :
 							</li>
 						<?php endif; ?>
 
-						<li class="abm-single-meta-cost">
-							<span class="abm-single-label"><?php esc_html_e( 'Cover', 'arkon-bar-manager' ); ?></span>
-							<span class="abm-single-value">
-								<?php echo esc_html( '' !== $abm_cost ? $abm_cost : __( 'No cover', 'arkon-bar-manager' ) ); ?>
-							</span>
-						</li>
+						<?php if ( '' !== $abm_cost ) : ?>
+							<li class="abm-single-meta-cost">
+								<span class="abm-single-label"><?php esc_html_e( 'Cover', 'arkon-bar-manager' ); ?></span>
+								<span class="abm-single-value"><?php echo esc_html( $abm_cost ); ?></span>
+							</li>
+						<?php endif; ?>
 					</ul>
 
 					<?php
