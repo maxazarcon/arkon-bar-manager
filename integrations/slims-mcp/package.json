@@ -1,0 +1,17 @@
+{
+  "name": "slims-event-mcp",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "deploy:auth": "wrangler deploy -c auth-server/wrangler.jsonc",
+    "deploy:mcp": "wrangler deploy -c wrangler.jsonc",
+    "check": "node --check src/index.mjs && node --check src/oauth.mjs && node --check auth-server/src/index.mjs"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^1.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
