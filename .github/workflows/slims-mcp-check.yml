@@ -1,0 +1,28 @@
+name: Slims MCP checks
+on:
+  push:
+    paths:
+      - 'integrations/slims-mcp/**'
+      - '.github/workflows/slims-mcp-check.yml'
+  pull_request:
+    paths:
+      - 'integrations/slims-mcp/**'
+      - '.github/workflows/slims-mcp-check.yml'
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/slims-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - name: Validate Cloudflare bundle (without deploying)
+        run: npx wrangler deploy --dry-run -c auth-server/wrangler.jsonc --outdir /tmp/slims-auth
+      - name: Validate resource Worker bundle (without deploying)
+        run: npx wrangler deploy --dry-run -c wrangler.jsonc --outdir /tmp/slims-mcp
