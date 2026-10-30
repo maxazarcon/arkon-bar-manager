@@ -1,0 +1,12 @@
+{
+  "name": "slims-event-auth",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-10-30",
+  "compatibility_flags": ["nodejs_compat","global_fetch_strictly_public"],
+  "workers_dev": true,
+  "vars": {
+    "ISSUER": "https://slims-event-auth.arkoninteractive.workers.dev",
+    "MCP_SERVER_URL": "https://slims-event-mcp.arkoninteractive.workers.dev/mcp"
+  },
+  "kv_namespaces": [{"binding":"OAUTH_KV","id":"SET_AFTER_KV_CREATION"}]
+}
