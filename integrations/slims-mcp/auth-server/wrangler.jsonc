@@ -8,5 +8,5 @@
     "ISSUER": "https://slims-event-auth.arkoninteractive.workers.dev",
     "MCP_SERVER_URL": "https://slims-event-mcp.arkoninteractive.workers.dev/mcp"
   },
-  "kv_namespaces": [{"binding":"OAUTH_KV","id":"SET_AFTER_KV_CREATION"}]
+  "kv_namespaces": [{"binding":"OAUTH_KV","id":"cc69e46a5a1a4351a9b34ff8dafba0ee"}]
 }
