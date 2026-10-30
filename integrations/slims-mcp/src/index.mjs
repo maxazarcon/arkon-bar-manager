@@ -56,7 +56,10 @@ async function wp(env,path,options={}){
  const url=new URL(path,SITE);
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),14000);
  try{
-  const res=await fetch(url,{method:options.method||'GET',headers:{'Authorization':base64Auth(env),'Accept':'application/json',...(options.headers||{}),...(options.body&&!(options.body instanceof Uint8Array)?{'Content-Type':'application/json'}:{})},body:options.body instanceof Uint8Array?options.body:options.body?JSON.stringify(options.body):undefined,signal:controller.signal,redirect:'error'});
+  const res=await fetch(url,{method:options.method||'GET',headers:{'Authorization':base64Auth(env),'Accept':'application/json',...(options.headers||{}),...(options.body&&!(options.body instanceof Uint8Array)?{'Content-Type':'application/json'}:{})},body:options.body instanceof Uint8Array?options.body:options.body?JSON.stringify(options.body):undefined,signal:controller.signal,redirect:'manual'});
+  // Workers supports manual redirects, not redirect: 'error'.
+  // Never follow redirects on requests bearing WordPress credentials.
+  if (res.status >= 300 && res.status < 400) fail('WordPress API returned a redirect; request refused.');
   const contentType=res.headers.get('content-type')||'';
   const text=await res.text();
   let data;try{data=JSON.parse(text);}catch{fail('WordPress returned non-JSON response ('+res.status+').');}
