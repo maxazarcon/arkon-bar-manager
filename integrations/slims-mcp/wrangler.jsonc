@@ -1,7 +1,13 @@
 {
   "name": "slims-event-mcp",
-  "main": "src/index.mjs",
+  "main": "src/oauth.mjs",
   "compatibility_date": "2026-10-30",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
-  "observability": { "enabled": true }
+  "observability": {"enabled":true},
+  "vars": {
+    "MCP_SERVER_URL": "https://slims-event-mcp.arkoninteractive.workers.dev/mcp",
+    "AUTH_SERVER_URL": "https://slims-event-auth.arkoninteractive.workers.dev"
+  },
+  "services":[{"binding":"AUTH_SERVER","service":"slims-event-auth"}]
 }
