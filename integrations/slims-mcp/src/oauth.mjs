@@ -12,7 +12,7 @@ export default new OAuthResourceServer({
     resource:env.MCP_SERVER_URL,
     authorization_servers:[env.AUTH_SERVER_URL]
   },
-  requiredScopes:['mcp:read'],
+  requiredScopes:['mcp:read','mcp:write'],
   validateToken:(env)=>env.AUTH_SERVER.validateToken,
   handler:{
     async fetch(request,env,ctx){
