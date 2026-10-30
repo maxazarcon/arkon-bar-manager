@@ -1,0 +1,20 @@
+{
+  "$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name":"slims-event-manager",
+  "version":"0.1.0",
+  "description":"Create, review, and publish events on the existing Slim's Dive Bar event calendar.",
+  "author":{"name":"Arkon Interactive"},
+  "extensions":{
+    "com.openai":{
+      "interface":{
+        "displayName":"Slim's Event Manager",
+        "shortDescription":"Manage Slim's events",
+        "longDescription":"Read the existing Slim's event calendar, create unpublished event drafts, attach flyers, and publish only after explicit approval.",
+        "developerName":"Arkon Interactive",
+        "category":"Productivity",
+        "capabilities":["Interactive"],
+        "defaultPrompt":"Create an unpublished event in Slim's calendar and show me the real draft details for review."
+      }
+    }
+  }
+}
