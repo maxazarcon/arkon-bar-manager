@@ -131,8 +131,8 @@ class ABM_Admin {
 			? max( 1, min( 120, $horizon ) )
 			: ABM_Occurrences::DEFAULT_HORIZON_MONTHS;
 
-		$out['calendar_initial']        = max( 1, absint( $input['calendar_initial'] ?? 10 ) );
-		$out['calendar_load_more']      = max( 1, absint( $input['calendar_load_more'] ?? 10 ) );
+		$out['calendar_initial']        = max( 1, absint( $input['calendar_initial'] ?? ABM_Calendar::DEFAULT_INITIAL ) );
+		$out['calendar_load_more']      = max( 1, absint( $input['calendar_load_more'] ?? ABM_Calendar::DEFAULT_MORE ) );
 		$out['calendar_show_categories'] = empty( $input['calendar_show_categories'] ) ? 0 : 1;
 		$out['single_template']          = empty( $input['single_template'] ) ? 0 : 1;
 
@@ -152,8 +152,10 @@ class ABM_Admin {
 		$date_format     = esc_attr( abm_get_setting( 'date_format', 'j M' ) );
 		$date_preview    = esc_html( date_i18n( abm_get_setting( 'date_format', 'j M' ) ?: 'j M', current_datetime()->getTimestamp() ) );
 		$recur_horizon   = (int) ABM_Occurrences::horizon_months();
-		$cal_initial     = (int) abm_get_setting( 'calendar_initial', 10 );
-		$cal_load_more   = (int) abm_get_setting( 'calendar_load_more', 10 );
+		// The same fallbacks the shortcode uses, so the form shows what the
+		// calendar is actually doing before the settings have ever been saved.
+		$cal_initial     = (int) abm_get_setting( 'calendar_initial', ABM_Calendar::DEFAULT_INITIAL );
+		$cal_load_more   = (int) abm_get_setting( 'calendar_load_more', ABM_Calendar::DEFAULT_MORE );
 		$cal_show_cats   = (int) abm_get_setting( 'calendar_show_categories', 1 );
 		$single_template = (int) abm_get_setting( 'single_template', 1 );
 		?>

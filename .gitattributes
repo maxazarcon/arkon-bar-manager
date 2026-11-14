@@ -3,5 +3,10 @@
 .gitattributes  export-ignore
 .editorconfig   export-ignore
 
+# Not part of the plugin: CI for this repository, and integrations that are
+# deployed on their own. Neither belongs in a site's plugins directory.
+/.github        export-ignore
+/integrations   export-ignore
+
 # Normalise line endings; this tree is LF throughout.
 * text=auto eol=lf

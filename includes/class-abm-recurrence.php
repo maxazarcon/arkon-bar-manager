@@ -118,7 +118,15 @@ class ABM_Recurrence {
 
 			case 'monthly_day':
 				$parts[] = 'FREQ=MONTHLY';
-				$parts[] = 'BYDAY=' . self::nth_of_month( $start ) . self::DAYS[ (int) $start->format( 'w' ) ];
+				// Counted from the front of the month, exactly as the generator
+				// counts it, and not through nth_of_month(): that helper reads a
+				// fourth that is also the last as "the last", which is the right
+				// guess for dates with no rule behind them and the wrong one here.
+				// A rule made on a fourth Tuesday generates fourth Tuesdays, and
+				// would export as last Tuesdays, a week later in every five-Tuesday
+				// month. A fifth stays a fifth: BYDAY=5TU skips the months without
+				// one, which is what the generator does too.
+				$parts[] = 'BYDAY=' . (int) ceil( (int) $start->format( 'j' ) / 7 ) . self::DAYS[ (int) $start->format( 'w' ) ];
 				break;
 
 			default:
@@ -469,11 +477,25 @@ class ABM_Recurrence {
 	 * DTSTART's own value, so a midnight UNTIL on the final date can drop that
 	 * date for an evening event. The end of the day cannot.
 	 *
+	 * The day meant is the venue's, so its last second is converted to UTC
+	 * rather than written as 23:59:59Z. West of UTC those are hours apart: 9 PM
+	 * in Chicago on the final date is already past 23:59:59Z that day, and a
+	 * UNTIL stamped that way cuts the last night off the series.
+	 *
+	 * Without WordPress (the offline harness) there is no site zone to ask, and
+	 * UTC is used, which gives the plain end of the day.
+	 *
 	 * @param string $ymd Y-m-d.
 	 * @return string
 	 */
 	private static function until( $ymd ) {
-		return str_replace( '-', '', $ymd ) . 'T235959Z';
+		$utc = new DateTimeZone( 'UTC' );
+		$tz  = function_exists( 'wp_timezone' ) ? wp_timezone() : $utc;
+		$end = date_create_immutable( $ymd . ' 23:59:59', $tz );
+		if ( ! $end ) {
+			return str_replace( '-', '', $ymd ) . 'T235959Z';
+		}
+		return $end->setTimezone( $utc )->format( 'Ymd\THis\Z' );
 	}
 
 	/**

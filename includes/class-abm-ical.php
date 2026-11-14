@@ -35,17 +35,18 @@ class ABM_ICal {
 		}
 		list( $start_dt, $end_dt ) = $dts;
 
-		$utc       = new DateTimeZone( 'UTC' );
-		$dtstart   = ( clone $start_dt )->setTimezone( $utc )->format( 'Ymd\THis\Z' );
-		$dtend     = ( clone $end_dt )->setTimezone( $utc )->format( 'Ymd\THis\Z' );
-		$dtstamp   = gmdate( 'Ymd\THis\Z' );
+		$dtstamp = gmdate( 'Ymd\THis\Z' );
 
 		$summary  = self::escape( get_the_title( $post_id ) );
 		$location = self::escape( abm_venue_location() );
 
-		$desc = wp_strip_all_tags( (string) $post->post_excerpt );
-		if ( '' === $desc ) {
-			$desc = wp_strip_all_tags( (string) $post->post_content );
+		// Nothing from behind a password: the file still says what and when.
+		$desc = '';
+		if ( ! post_password_required( $post ) ) {
+			$desc = wp_strip_all_tags( (string) $post->post_excerpt );
+			if ( '' === $desc ) {
+				$desc = wp_strip_all_tags( (string) $post->post_content );
+			}
 		}
 		$cost = abm_format_cost( get_post_meta( $post_id, 'abm_event_cost', true ) );
 		if ( '' !== $cost ) {
@@ -64,6 +65,32 @@ class ABM_ICal {
 		 * and neither can any calendar client reading it.
 		 */
 		$series = ABM_Recurrence::describe( $post_id, $date );
+
+		/*
+		 * A series is written in the venue's own time zone, not in UTC.
+		 *
+		 * A calendar expands a rule in the zone DTSTART is given in. Friday 9 PM in
+		 * Chicago is Saturday 02:00 in UTC, so a UTC DTSTART beside BYDAY=FR asks
+		 * for Fridays at 02:00 UTC -- which is Thursday night at the venue. The same
+		 * UTC instant is also an hour off on the far side of every clock change,
+		 * and an EXDATE stamped for that side then matches nothing.
+		 *
+		 * A single night has no rule to expand, so it stays an absolute UTC instant,
+		 * which is exact. So does a series on a site whose zone is UTC itself.
+		 */
+		$tz    = $start_dt->getTimezone();
+		$local = $series && ! in_array( $tz->getName(), array( 'UTC', '+00:00' ), true );
+		$utc   = new DateTimeZone( 'UTC' );
+
+		if ( $local ) {
+			$tzid    = self::tzid( $tz );
+			$dtstart = 'DTSTART;TZID=' . $tzid . ':' . $start_dt->format( 'Ymd\THis' );
+			$dtend   = 'DTEND;TZID=' . $tzid . ':' . $end_dt->format( 'Ymd\THis' );
+		} else {
+			$tzid    = '';
+			$dtstart = 'DTSTART:' . ( clone $start_dt )->setTimezone( $utc )->format( 'Ymd\THis\Z' );
+			$dtend   = 'DTEND:' . ( clone $end_dt )->setTimezone( $utc )->format( 'Ymd\THis\Z' );
+		}
 
 		$host = wp_parse_url( home_url(), PHP_URL_HOST );
 
@@ -91,23 +118,37 @@ class ABM_ICal {
 			'PRODID:-//Arkon Event Manager//EN',
 			'CALSCALE:GREGORIAN',
 			'METHOD:PUBLISH',
-			'BEGIN:VEVENT',
-			'UID:' . $uid,
-			'DTSTAMP:' . $dtstamp,
-			'DTSTART:' . $dtstart,
-			'DTEND:' . $dtend,
 		);
 
-		// EXDATE and RDATE carry the same clock time as DTSTART -- see stamp_all().
+		// The zone a TZID names has to be defined in the same file. Most calendars
+		// know the IANA names on their own; the ones that do not read this.
+		if ( $local ) {
+			$lines = array_merge( $lines, self::vtimezone( $tz, $tzid, $start_dt, self::series_end( $series, $start_dt ) ) );
+		}
+
+		$lines = array_merge(
+			$lines,
+			array(
+				'BEGIN:VEVENT',
+				'UID:' . $uid,
+				'DTSTAMP:' . $dtstamp,
+				$dtstart,
+				$dtend,
+			)
+		);
+
+		// EXDATE and RDATE carry the same clock time, in the same form, as DTSTART
+		// -- see stamp_all().
 		if ( $series ) {
+			$param = $local ? ';TZID=' . $tzid : '';
 			if ( '' !== $series['rrule'] ) {
 				$lines[] = 'RRULE:' . $series['rrule'];
 			}
 			if ( $series['exdates'] ) {
-				$lines[] = 'EXDATE:' . implode( ',', self::stamp_all( $series['exdates'], $start_dt ) );
+				$lines[] = 'EXDATE' . $param . ':' . implode( ',', self::stamp_all( $series['exdates'], $start_dt, $local ) );
 			}
 			if ( $series['rdates'] ) {
-				$lines[] = 'RDATE:' . implode( ',', self::stamp_all( $series['rdates'], $start_dt ) );
+				$lines[] = 'RDATE' . $param . ':' . implode( ',', self::stamp_all( $series['rdates'], $start_dt, $local ) );
 			}
 		}
 
@@ -138,8 +179,8 @@ class ABM_ICal {
 	}
 
 	/**
-	 * Render a list of dates as UTC timestamps carrying the series' own start
-	 * time, for EXDATE / RDATE.
+	 * Render a list of dates carrying the series' own start time, for EXDATE /
+	 * RDATE: local wall-clock values when DTSTART is local, UTC otherwise.
 	 *
 	 * The clock time is taken from DTSTART rather than from each occurrence row.
 	 * An EXDATE only cancels an instance if it matches that instance exactly, so
@@ -149,9 +190,10 @@ class ABM_ICal {
 	 *
 	 * @param string[]          $dates    Y-m-d.
 	 * @param DateTimeInterface $start_dt The event's start, with its time.
+	 * @param bool              $local    Whether DTSTART is written with a TZID.
 	 * @return string[]
 	 */
-	private static function stamp_all( $dates, $start_dt ) {
+	private static function stamp_all( $dates, $start_dt, $local = false ) {
 		$utc  = new DateTimeZone( 'UTC' );
 		$out  = array();
 		$hour = (int) $start_dt->format( 'H' );
@@ -163,10 +205,137 @@ class ABM_ICal {
 				continue;
 			}
 			$dt->setTime( $hour, $min, 0 );
-			$out[] = $dt->setTimezone( $utc )->format( 'Ymd\THis\Z' );
+			$out[] = $local
+				? $dt->format( 'Ymd\THis' )
+				: $dt->setTimezone( $utc )->format( 'Ymd\THis\Z' );
 		}
 
 		return $out;
+	}
+
+	/**
+	 * A TZID for the site's zone.
+	 *
+	 * An IANA name is used as it is. A site set to a manual offset has a zone
+	 * named like "+05:30", and a colon cannot appear in an unquoted parameter
+	 * value, so that becomes "UTC+0530" -- which means nothing to a calendar on
+	 * its own, and does not have to, because vtimezone() defines it.
+	 *
+	 * @param DateTimeZone $tz Site zone.
+	 * @return string
+	 */
+	private static function tzid( DateTimeZone $tz ) {
+		$name = $tz->getName();
+		if ( preg_match( '#^[A-Za-z][A-Za-z0-9_+\-]*(/[A-Za-z0-9_+\-]+)*$#', $name ) ) {
+			return $name;
+		}
+		return 'UTC' . preg_replace( '/[^0-9+\-]/', '', $name );
+	}
+
+	/**
+	 * How far the zone definition has to reach: the series' own end where it has
+	 * one, five years where it does not, and never more than ten, so an
+	 * eight-year weekly does not ship a page of clock changes it will never use.
+	 *
+	 * @param array             $series   From ABM_Recurrence::describe().
+	 * @param DateTimeInterface $start_dt The event's start.
+	 * @return int Unix timestamp.
+	 */
+	private static function series_end( $series, $start_dt ) {
+		$start = $start_dt->getTimestamp();
+		$cap   = $start + 10 * 366 * DAY_IN_SECONDS;
+		$end   = 0;
+
+		if ( preg_match( '/UNTIL=(\d{4})(\d{2})(\d{2})/', (string) $series['rrule'], $m ) ) {
+			$end = gmmktime( 0, 0, 0, (int) $m[2], (int) $m[3], (int) $m[1] );
+		} elseif ( $series['rdates'] ) {
+			$last = date_create( end( $series['rdates'] ), new DateTimeZone( 'UTC' ) );
+			$end  = $last ? $last->getTimestamp() : 0;
+		}
+
+		if ( ! $end ) {
+			return $start + 5 * 366 * DAY_IN_SECONDS;
+		}
+
+		// A few days past the last night, so its own offset is always covered.
+		return min( $cap, $end + 3 * DAY_IN_SECONDS );
+	}
+
+	/**
+	 * A VTIMEZONE describing the site's zone across the series.
+	 *
+	 * Written from the zone database's own transitions, one observance per clock
+	 * change, rather than as a yearly rule inferred from them. Inferring "second
+	 * Sunday in March" from a sample year is right until a zone changes its law,
+	 * and then wrong without any sign of it; the transitions are simply what
+	 * happened and what is scheduled.
+	 *
+	 * @param DateTimeZone      $tz       Site zone.
+	 * @param string            $tzid     From tzid().
+	 * @param DateTimeInterface $start_dt The event's start.
+	 * @param int               $until    Unix timestamp the definition must reach.
+	 * @return string[] Content lines.
+	 */
+	private static function vtimezone( DateTimeZone $tz, $tzid, $start_dt, $until ) {
+		// From two days before the first night, so the first observance listed is
+		// the one in force on that night and starts before it in any zone. Nothing
+		// earlier is needed: the export never reaches back past the night viewed.
+		$begin = $start_dt->getTimestamp() - 2 * DAY_IN_SECONDS;
+		$steps = $tz->getTransitions( $begin, max( $begin, (int) $until ) );
+
+		$lines = array(
+			'BEGIN:VTIMEZONE',
+			'TZID:' . $tzid,
+		);
+
+		// A fixed offset has no transitions to list: one observance, for all time.
+		if ( ! is_array( $steps ) || ! $steps ) {
+			$offset = self::utc_offset( $tz->getOffset( $start_dt ) );
+			return array_merge(
+				$lines,
+				array(
+					'BEGIN:STANDARD',
+					'DTSTART:19700101T000000',
+					'TZOFFSETFROM:' . $offset,
+					'TZOFFSETTO:' . $offset,
+					'END:STANDARD',
+					'END:VTIMEZONE',
+				)
+			);
+		}
+
+		foreach ( $steps as $i => $step ) {
+			// The first entry is the state at $begin, not a change, so it has no
+			// earlier offset to come from; it comes from its own.
+			$from = $i > 0 ? (int) $steps[ $i - 1 ]['offset'] : (int) $step['offset'];
+			$kind = ! empty( $step['isdst'] ) ? 'DAYLIGHT' : 'STANDARD';
+
+			$lines[] = 'BEGIN:' . $kind;
+			// An observance starts at the local time shown just before the change.
+			$lines[] = 'DTSTART:' . gmdate( 'Ymd\THis', (int) $step['ts'] + $from );
+			$lines[] = 'TZOFFSETFROM:' . self::utc_offset( $from );
+			$lines[] = 'TZOFFSETTO:' . self::utc_offset( (int) $step['offset'] );
+			if ( ! empty( $step['abbr'] ) && preg_match( '/^[A-Za-z]+$/', (string) $step['abbr'] ) ) {
+				$lines[] = 'TZNAME:' . $step['abbr'];
+			}
+			$lines[] = 'END:' . $kind;
+		}
+
+		$lines[] = 'END:VTIMEZONE';
+
+		return $lines;
+	}
+
+	/**
+	 * Seconds east of UTC as an RFC 5545 utc-offset: -18000 becomes "-0500".
+	 *
+	 * @param int $seconds Offset in seconds.
+	 * @return string
+	 */
+	private static function utc_offset( $seconds ) {
+		$seconds = (int) $seconds;
+		$abs     = abs( $seconds );
+		return sprintf( '%s%02d%02d', $seconds < 0 ? '-' : '+', intdiv( $abs, 3600 ), intdiv( $abs % 3600, 60 ) );
 	}
 
 	/**
@@ -192,10 +361,19 @@ class ABM_ICal {
 		if ( strlen( $line ) <= 75 ) {
 			return $line;
 		}
+		// Cut on a character boundary. The limit is in octets, but a line broken
+		// in the middle of a multi-byte character is two invalid halves to a
+		// reader that decodes each physical line before unfolding.
 		$folded = '';
-		while ( strlen( $line ) > 75 ) {
-			$folded .= substr( $line, 0, 75 ) . "\r\n ";
-			$line    = substr( $line, 75 );
+		$limit  = 75;
+		while ( strlen( $line ) > $limit ) {
+			$piece = function_exists( 'mb_strcut' ) ? mb_strcut( $line, 0, $limit, 'UTF-8' ) : substr( $line, 0, $limit );
+			if ( '' === $piece ) {
+				$piece = substr( $line, 0, $limit ); // Not valid UTF-8; cut it anyway.
+			}
+			$folded .= $piece . "\r\n ";
+			$line    = substr( $line, strlen( $piece ) );
+			$limit   = 74; // A continuation line spends one octet on its leading space.
 		}
 		return $folded . $line;
 	}

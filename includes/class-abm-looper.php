@@ -242,8 +242,10 @@ class ABM_Looper {
 
 		$ts = abm_date_to_timestamp( $row->occur_date );
 
-		$excerpt = (string) get_post_field( 'post_excerpt', $post_id );
-		if ( '' === $excerpt ) {
+		// Nothing from behind a password, as in the calendar list.
+		$locked  = post_password_required( $post_id );
+		$excerpt = $locked ? '' : (string) get_post_field( 'post_excerpt', $post_id );
+		if ( '' === $excerpt && ! $locked ) {
 			$excerpt = wp_trim_words( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ), 28, '…' );
 		}
 
