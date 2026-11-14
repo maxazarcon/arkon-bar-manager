@@ -310,7 +310,9 @@ class ABM_Bulk {
 		<p>
 			<label for="abm-bulk-status-select"><?php esc_html_e( 'Create as', 'arkon-bar-manager' ); ?></label>
 			<select name="abm_status" id="abm-bulk-status-select">
-				<option value="publish"><?php esc_html_e( 'Published', 'arkon-bar-manager' ); ?></option>
+				<?php if ( $this->can_publish() ) : ?>
+					<option value="publish"><?php esc_html_e( 'Published', 'arkon-bar-manager' ); ?></option>
+				<?php endif; ?>
 				<option value="draft"><?php esc_html_e( 'Draft', 'arkon-bar-manager' ); ?></option>
 			</select>
 		</p>
@@ -646,8 +648,9 @@ class ABM_Bulk {
 					'start'    => $this->csv_time( $get( array( 'start', 'start time', 'time' ) ) ),
 					'end'      => $this->csv_time( $get( array( 'end', 'end time' ) ), true ),
 					'title'    => $title,
-					'cost'     => $get( array( 'cost', 'cover', 'price' ) ),
-					'category' => $this->term_id( $get( array( 'category', 'categories' ) ) ),
+					'cost'        => $get( array( 'cost', 'cover', 'price' ) ),
+					'description' => $get( array( 'description', 'details' ) ),
+					'category'    => $this->term_id( $get( array( 'category', 'categories' ) ) ),
 					'notes'    => '' === $date ? array( 'date not understood' ) : array(),
 				)
 			);
@@ -978,6 +981,11 @@ class ABM_Bulk {
 		if ( ! in_array( $status, array( 'publish', 'draft' ), true ) ) {
 			$status = 'publish';
 		}
+		// This screen opens to anyone who can write an event, and wp_insert_post()
+		// checks nothing, so publishing has to be checked here.
+		if ( 'publish' === $status && ! $this->can_publish() ) {
+			$status = 'draft';
+		}
 
 		$report = array(
 			'created'   => 0,
@@ -1017,6 +1025,16 @@ class ABM_Bulk {
 		}
 
 		return $report;
+	}
+
+	/**
+	 * Whether the current user may publish events, as opposed to drafting them.
+	 *
+	 * @return bool
+	 */
+	private function can_publish() {
+		$type = get_post_type_object( ABM_POST_TYPE );
+		return current_user_can( $type ? $type->cap->publish_posts : 'publish_posts' );
 	}
 
 	/**

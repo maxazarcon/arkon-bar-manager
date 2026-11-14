@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 3.0.0
+Stable tag: 3.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -398,6 +398,34 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 3.0.1 =
+* A repeating event's iCal download is written in the site's own time zone. An
+  evening series could previously land a day early in a visitor's calendar,
+  shift by an hour when the clocks changed, and keep nights that were meant to
+  be skipped.
+* A repeating event's last date is no longer left off its iCal download or its
+  Google Calendar link.
+* A repeating event's Google Calendar link carries the site's time zone, for
+  the same reason.
+* A monthly repeat set on the fourth weekday of a month exports as the fourth,
+  not as the last.
+* The API refuses a date or time it cannot read instead of saving it. A
+  malformed value could previously take the event off the calendar while the
+  request reported success. Dates are `YYYY-MM-DD`; times are 24-hour `HH:MM`,
+  or `close` for an end time.
+* Events brought in with the CSV importer appear on the calendar straight away.
+* Bulk Add publishes only for users who are allowed to publish. Anyone else
+  creates drafts.
+* Bulk Add reads the `description` column of a spreadsheet, as it says it does.
+* A password-protected event no longer shows its description in the calendar
+  list or in its iCal download.
+* Load More no longer repeats events whose start time is stored in an unusual
+  form.
+* The settings screen shows the calendar's real default of 6 events before the
+  settings have first been saved.
+* Long lines in an iCal download are no longer broken in the middle of an
+  accented character or an emoji.
 
 = 3.0.0 =
 * The event page leaves the cover line off when no cover was entered. Choosing

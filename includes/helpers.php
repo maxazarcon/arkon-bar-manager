@@ -349,14 +349,41 @@ function abm_build_gcal_url( $post_id, $ymd, $start, $end ) {
 	}
 	list( $s, $e ) = $dts;
 
-	$utc = new DateTimeZone( 'UTC' );
-	$s_utc = ( clone $s )->setTimezone( $utc );
-	$e_utc = ( clone $e )->setTimezone( $utc );
-	$dates = $s_utc->format( 'Ymd\THis\Z' ) . '/' . $e_utc->format( 'Ymd\THis\Z' );
+	/*
+	 * A series is sent in the venue's own time zone, for the reason the .ics
+	 * export is: a rule is expanded in the zone its start is given in, and
+	 * Friday 9 PM in Chicago is already Saturday in UTC, so a UTC start beside
+	 * BYDAY=FR describes the wrong night. Google takes local times together
+	 * with a ctz parameter naming the zone.
+	 *
+	 * Only where the site's zone has a name to give. A manual offset such as
+	 * "-05:00" is not something ctz accepts, and a single night has no rule to
+	 * expand, so both stay as the absolute UTC instants they always were.
+	 */
+	$series = ABM_Recurrence::describe( $post_id, $ymd );
+	$recurs = $series && '' !== $series['rrule'];
+	$zone   = $s->getTimezone()->getName();
+	$ctz    = ( $recurs && preg_match( '#^[A-Za-z_]+(/[A-Za-z0-9_+\-]+)+$#', $zone ) ) ? $zone : '';
 
-	$details = wp_strip_all_tags( (string) get_post_field( 'post_excerpt', $post_id ) );
-	if ( '' === $details ) {
-		$details = wp_trim_words( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ), 40, '' );
+	if ( '' !== $ctz ) {
+		$dates = $s->format( 'Ymd\THis' ) . '/' . $e->format( 'Ymd\THis' );
+	} else {
+		$utc   = new DateTimeZone( 'UTC' );
+		$s_utc = ( clone $s )->setTimezone( $utc );
+		$e_utc = ( clone $e )->setTimezone( $utc );
+		$dates = $s_utc->format( 'Ymd\THis\Z' ) . '/' . $e_utc->format( 'Ymd\THis\Z' );
+	}
+
+	// Nothing from behind a password. The stored copy of this link is built when
+	// the event is saved, with no visitor present, and is readable by anyone;
+	// post_password_required() is true there for any protected event, so the
+	// description never reaches it.
+	$details = '';
+	if ( ! post_password_required( $post_id ) ) {
+		$details = wp_strip_all_tags( (string) get_post_field( 'post_excerpt', $post_id ) );
+		if ( '' === $details ) {
+			$details = wp_trim_words( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ), 40, '' );
+		}
 	}
 
 	$cost = abm_format_cost( get_post_meta( $post_id, 'abm_event_cost', true ) );
@@ -383,6 +410,9 @@ function abm_build_gcal_url( $post_id, $ymd, $start, $end ) {
 	$query = http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
 
 	$url = 'https://calendar.google.com/calendar/render?' . $query . '&dates=' . $dates;
+	if ( '' !== $ctz ) {
+		$url .= '&ctz=' . rawurlencode( $ctz );
+	}
 
 	/*
 	 * Add the series as a recurring event where there is one, so a weekly night
@@ -398,8 +428,7 @@ function abm_build_gcal_url( $post_id, $ymd, $start, $end ) {
 	 * generous is worth more than a single night. RDATE-only series -- dates with
 	 * no pattern behind them -- get no recur at all rather than a wrong rule.
 	 */
-	$series = ABM_Recurrence::describe( $post_id, $ymd );
-	if ( $series && '' !== $series['rrule'] ) {
+	if ( $recurs ) {
 		$url .= '&recur=' . rawurlencode( 'RRULE:' . $series['rrule'] );
 	}
 

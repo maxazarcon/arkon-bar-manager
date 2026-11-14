@@ -22,6 +22,7 @@ global $wpdb;
 delete_option( 'abm_settings' );
 delete_option( 'abm_db_version' );
 delete_option( 'abm_occurrences_schema' );
+delete_transient( 'abm_github_release' );
 
 // Deactivation normally clears this, but uninstall can be reached without a
 // clean deactivation (a failed update, a manual removal), so do not assume.

@@ -138,7 +138,11 @@ class ABM_Calendar {
 		if ( '' === $date ) {
 			return null;
 		}
-		$time = preg_match( '/^([01]\d|2[0-3]):([0-5]\d)$/', $parts[1] ) ? $parts[1] : '';
+		// Whatever the row holds, not only a well-formed H:i. The cursor has to
+		// compare equal to the stored start_time to move past it; blanking an
+		// unusual value restarts the day and serves the same rows again. It is
+		// only ever a bound parameter, so the looser shape costs nothing.
+		$time = preg_match( '/^[0-9A-Za-z:]{1,5}$/', $parts[1] ) ? $parts[1] : '';
 		return array(
 			'date' => $date,
 			'time' => $time,
@@ -259,7 +263,7 @@ class ABM_Calendar {
 		$chevron = '<svg class="abm-month-chevron" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 
 		return sprintf(
-			'<div class="abm-month" data-month="%1$s"><button type="button" class="abm-month-toggle" aria-expanded="true" aria-controls="%1$s"><span class="abm-month-label">%2$s</span>%3$s</button></div>',
+			'<div class="abm-month" data-month="%1$s"><button type="button" class="abm-month-toggle" aria-expanded="true"><span class="abm-month-label">%2$s</span>%3$s</button></div>',
 			esc_attr( $slug ),
 			esc_html( $label ),
 			$chevron
@@ -301,8 +305,10 @@ class ABM_Calendar {
 
 		// Short description. Only 15 of the 337 imported events carry one, so this is
 		// absent from most rows by design rather than by omission.
-		$blurb = trim( (string) get_post_field( 'post_excerpt', $post_id ) );
-		if ( '' === $blurb ) {
+		// A password-protected event lists its title, date and time like any other,
+		// but what is behind the password stays there.
+		$blurb = post_password_required( $post_id ) ? '' : trim( (string) get_post_field( 'post_excerpt', $post_id ) );
+		if ( '' === $blurb && ! post_password_required( $post_id ) ) {
 			$blurb = wp_trim_words( wp_strip_all_tags( (string) get_post_field( 'post_content', $post_id ) ), 26, '&hellip;' );
 		}
 

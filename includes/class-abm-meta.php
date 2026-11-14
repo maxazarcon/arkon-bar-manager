@@ -37,6 +37,7 @@ class ABM_Meta {
 	private function __construct() {
 		add_action( 'init', array( $this, 'register_meta' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_fields' ) );
+		add_filter( 'rest_pre_insert_' . ABM_POST_TYPE, array( $this, 'rest_reject_invalid_meta' ), 10, 2 );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
 		// custom-fields support is on purely for REST; the raw key/value panel it
 		// also switches on would just be a way to corrupt these fields by hand.
@@ -53,10 +54,40 @@ class ABM_Meta {
 	 * Register meta with sanitization + REST exposure (read public, write = edit_post).
 	 */
 	public function register_meta() {
+		/*
+		 * Dates and times are validated, not just cleaned.
+		 *
+		 * The occurrence rows are rebuilt from these values, and the rebuild starts
+		 * by deleting the rows it is about to replace. A date that does not parse
+		 * then leaves nothing to put back, and a time longer than its column fails
+		 * the insert on a strict database -- either way the event drops off the
+		 * calendar while the request that caused it reports success.
+		 *
+		 * A REST write is refused outright by rest_reject_invalid_meta(), before
+		 * anything is saved, which is the only point at which the caller can be
+		 * told. The schema pattern documents the format to API clients and is a
+		 * second line behind that. The sanitize callback covers every other writer.
+		 */
+		foreach ( self::validated_keys() as $key => $rule ) {
+			register_post_meta(
+				ABM_POST_TYPE,
+				$key,
+				array(
+					'type'              => 'string',
+					'single'            => true,
+					'show_in_rest'      => array(
+						'schema' => array(
+							'type'    => 'string',
+							'pattern' => $rule[1],
+						),
+					),
+					'sanitize_callback' => $rule[0],
+					'auth_callback'     => array( $this, 'meta_auth' ),
+				)
+			);
+		}
+
 		$string_keys = array(
-			'abm_event_date',
-			'abm_event_time_start',
-			'abm_event_time_end',
 			'abm_event_cost',
 			'abm_show_category',
 			'abm_date_display',
@@ -64,7 +95,6 @@ class ABM_Meta {
 			'abm_cost_display',
 			'abm_recur_type',
 			'abm_recur_weekdays',
-			'abm_recur_until',
 			'abm_recur_exceptions',
 			'abm_legacy_slug',
 		);
@@ -123,6 +153,94 @@ class ABM_Meta {
 				)
 			);
 		}
+	}
+
+	/**
+	 * A start time is a clock time. "close" is an end, never a start.
+	 *
+	 * @param mixed $value Raw value.
+	 * @return string H:i or ''.
+	 */
+	public static function sanitize_start_time( $value ) {
+		$time = abm_sanitize_time( $value );
+		return 'close' === $time ? '' : $time;
+	}
+
+	/**
+	 * The date and time keys, each with its sanitizer and the format it accepts.
+	 *
+	 * The patterns are as loose as the sanitizers behind them and no looser:
+	 * "7:00" and "Close" are normalized on the way in, so refusing them would be
+	 * refusing values that save correctly.
+	 *
+	 * @return array<string,array{0:callable,1:string}>
+	 */
+	private static function validated_keys() {
+		$date = '^$|^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$';
+		$time = '^$|^([01]?\d|2[0-3]):[0-5]\d$';
+
+		return array(
+			'abm_event_date'       => array( 'abm_sanitize_date', $date ),
+			'abm_recur_until'      => array( 'abm_sanitize_date', $date ),
+			'abm_event_time_start' => array( array( __CLASS__, 'sanitize_start_time' ), $time ),
+			'abm_event_time_end'   => array( 'abm_sanitize_time', $time . '|^[Cc][Ll][Oo][Ss][Ee]$' ),
+		);
+	}
+
+	/**
+	 * Refuse a REST write carrying a date or time that cannot be read, before
+	 * the post or any of its meta is saved.
+	 *
+	 * The schema pattern alone is not enough, for two reasons found by running
+	 * it. WordPress applies a meta key's pattern while it writes the meta, which
+	 * is after the post itself has been inserted or updated -- so a refused
+	 * create still left a draft behind, and a refused update still changed the
+	 * title. And a pattern can check that a value looks like 2026-02-30 but not
+	 * that February has a 30th; the sanitizer answers that by storing nothing,
+	 * which empties the event's dates and reports success.
+	 *
+	 * @param stdClass|WP_Error $prepared Post data about to be saved.
+	 * @param WP_REST_Request   $request  The request.
+	 * @return stdClass|WP_Error
+	 */
+	public function rest_reject_invalid_meta( $prepared, $request ) {
+		if ( is_wp_error( $prepared ) ) {
+			return $prepared;
+		}
+
+		$meta = $request['meta'];
+		if ( ! is_array( $meta ) ) {
+			return $prepared;
+		}
+
+		foreach ( self::validated_keys() as $key => $rule ) {
+			// Absent, or not a string: nothing to judge here. Core's own type
+			// check deals with the second.
+			if ( ! isset( $meta[ $key ] ) || ! is_string( $meta[ $key ] ) ) {
+				continue;
+			}
+
+			$value = $meta[ $key ];
+			$valid = (bool) preg_match( '#' . $rule[1] . '#u', $value );
+			if ( $valid && '' !== trim( $value ) ) {
+				// Right shape; now ask whether it means anything.
+				$valid = '' !== call_user_func( $rule[0], $value );
+			}
+
+			if ( ! $valid ) {
+				return new WP_Error(
+					'rest_invalid_param',
+					sprintf(
+						/* translators: %s: meta key. */
+						__( '%s is not a date or time this calendar can read. Dates are YYYY-MM-DD; times are 24-hour HH:MM, or "close" for an end time.', 'arkon-bar-manager' ),
+						$key
+					),
+					array( 'status' => 400 )
+				);
+			}
+		}
+
+		return $prepared;
 	}
 
 	/**

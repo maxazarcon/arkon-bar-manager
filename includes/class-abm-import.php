@@ -486,6 +486,13 @@ class ABM_Import {
 
 		$this->write_meta( $post_id, $event, $flyer_id, $key );
 
+		// The save hooks ran inside wp_insert_post() / wp_update_post() above,
+		// before the date meta was written, so they expanded an empty or outdated
+		// date. Without this a new event has no rows and never reaches the
+		// calendar, and an updated one keeps the rows of its old date. An event
+		// holding verbatim imported dates is left alone by generate_for_post().
+		ABM_Occurrences::generate_for_post( $post_id );
+
 		return array(
 			'outcome' => $created ? 'created' : 'updated',
 			'image'   => $image,
