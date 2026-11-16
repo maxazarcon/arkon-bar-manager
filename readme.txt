@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 3.1.1
+Stable tag: 3.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -472,6 +472,13 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 3.2.0 =
+* Add fingerprint-checked event detail updates that preserve recurrence and status.
+* Add read-only image attachment lookup for existing flyers.
+* Guard draft-only updates against concurrent publication.
+* Keep reviewed publication tied to the exact saved draft, refusing stale reviews.
+* Serialize agent changes to the same event.
 
 = 3.1.1 =
 

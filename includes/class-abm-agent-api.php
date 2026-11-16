@@ -204,13 +204,17 @@ class ABM_Agent_API {
 			array( '/events', 'POST', 'create_event', $write ),
 			array( "/events/{$id}", 'GET', 'get_event', $read ),
 			array( "/events/{$id}", 'POST', 'update_event', $write ),
+			array( "/events/{$id}/update-draft", 'POST', 'update_draft', $write ),
+			array( "/events/{$id}/update-checked", 'POST', 'update_checked', $write ),
 			array( "/events/{$id}/status", 'POST', 'set_status', $write ),
+			array( "/events/{$id}/publish-reviewed", 'POST', 'publish_reviewed', $write ),
 			array( "/events/{$id}/trash", 'POST', 'trash_event', $write ),
 			array( "/events/{$id}/restore", 'POST', 'restore_event', $write ),
 			array( "/events/{$id}/skip", 'POST', 'skip_date', $write ),
 			array( "/events/{$id}/unskip", 'POST', 'unskip_date', $write ),
 			array( "/events/{$id}/preview", 'GET', 'preview_link', $read ),
 			array( '/media', 'POST', 'upload_media', array( $this, 'can_upload' ) ),
+			array( "/media/{$id}", 'GET', 'get_media', $read ),
 			array( '/bulk/parse', 'POST', 'bulk_parse', $read ),
 			array( '/bulk/match-flyers', 'POST', 'bulk_match', $read ),
 			array( '/bulk/create', 'POST', 'bulk_create', $write ),
@@ -467,9 +471,50 @@ class ABM_Agent_API {
 		return $this->respond( 'update', $this->params( $request ), $request );
 	}
 
+	/** Update only the unchanged draft the caller just read, including its flyer. */
+	public function update_draft( $request ) {
+		$fingerprint = $request->get_param( 'fingerprint' );
+		if ( ! is_string( $fingerprint ) || ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint ) ) {
+			return new WP_Error( 'abm_invalid_fingerprint', __( 'A draft fingerprint is required.', 'arkon-bar-manager' ), array( 'status' => 400 ) );
+		}
+		$params = $this->params( $request );
+		unset( $params['fingerprint'] );
+		return $this->respond( 'update', $params, $request, 200, array( 'draft_fingerprint' => $fingerprint ) );
+	}
+
+	/** Edit existing event details without changing its dates, rule or status. */
+	public function update_checked( $request ) {
+		$fingerprint = $request->get_param( 'fingerprint' );
+		if ( ! is_string( $fingerprint ) || ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint ) ) {
+			return new WP_Error( 'abm_invalid_fingerprint', __( 'An event fingerprint is required.', 'arkon-bar-manager' ), array( 'status' => 400 ) );
+		}
+		$params = $this->params( $request );
+		unset( $params['fingerprint'] );
+		$allowed = array( 'id', 'title', 'description', 'start_time', 'end_time', 'cover', 'media_id' );
+		if ( array_diff( array_keys( $params ), $allowed ) || count( $params ) < 2 ) {
+			return new WP_Error( 'abm_invalid_field', __( 'Supply event details only; dates, recurrence and status cannot be changed here.', 'arkon-bar-manager' ), array( 'status' => 400 ) );
+		}
+		return $this->respond( 'update', $params, $request, 200, array( 'event_fingerprint' => $fingerprint ) );
+	}
+
 	/** @param WP_REST_Request $request Request. */
 	public function set_status( $request ) {
 		return $this->respond( 'set_status', $this->params( $request ), $request );
+	}
+
+	/** Publish only the exact draft whose fingerprint an external owner reviewed. */
+	public function publish_reviewed( $request ) {
+		$fingerprint = $request->get_param( 'fingerprint' );
+		if ( ! is_string( $fingerprint ) || ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint ) ) {
+			return new WP_Error( 'abm_invalid_fingerprint', __( 'A reviewed draft fingerprint is required.', 'arkon-bar-manager' ), array( 'status' => 400 ) );
+		}
+		return $this->respond(
+			'set_status',
+			array( 'id' => (int) $request['id'], 'status' => 'publish' ),
+			$request,
+			200,
+			array( 'reviewed_fingerprint' => $fingerprint )
+		);
 	}
 
 	/** @param WP_REST_Request $request Request. */
@@ -516,8 +561,9 @@ class ABM_Agent_API {
 	 * @param int             $applied Status code when applied.
 	 * @return WP_REST_Response|WP_Error
 	 */
-	private function respond( $op, array $params, $request, $applied = 200 ) {
-		$result = ABM_Agent_Ops::run( $op, $params, array( 'dry_run' => $this->is_dry( $request ) ) );
+	private function respond( $op, array $params, $request, $applied = 200, array $options = array() ) {
+		$options['dry_run'] = $this->is_dry( $request );
+		$result = ABM_Agent_Ops::run( $op, $params, $options );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
@@ -579,6 +625,28 @@ class ABM_Agent_API {
 	/* --------------------------------------------------------------------- */
 	/* Flyers                                                                */
 	/* --------------------------------------------------------------------- */
+
+	/** Read an existing image attachment without returning private file paths. */
+	public function get_media( $request ) {
+		$id = (int) $request['id'];
+		$post = get_post( $id );
+		if ( ! $post || 'attachment' !== $post->post_type || 'trash' === $post->post_status || ! wp_attachment_is_image( $id ) ) {
+			return new WP_Error( 'abm_not_found', __( 'No image attachment with that ID.', 'arkon-bar-manager' ), array( 'status' => 404 ) );
+		}
+		if ( ! current_user_can( 'read_post', $id ) ) {
+			return new WP_Error( 'abm_forbidden', __( 'You are not allowed to read this image.', 'arkon-bar-manager' ), array( 'status' => 403 ) );
+		}
+		$meta = wp_get_attachment_metadata( $id );
+		return rest_ensure_response( array(
+			'id' => $id,
+			'title' => (string) $post->post_title,
+			'url' => (string) wp_get_attachment_url( $id ),
+			'mime_type' => (string) get_post_mime_type( $id ),
+			'alt_text' => (string) get_post_meta( $id, '_wp_attachment_image_alt', true ),
+			'width' => (int) ( $meta['width'] ?? 0 ),
+			'height' => (int) ( $meta['height'] ?? 0 ),
+		) );
+	}
 
 	/**
 	 * Add an image to the Media Library.
