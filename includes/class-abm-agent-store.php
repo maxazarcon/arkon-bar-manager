@@ -20,7 +20,11 @@ class ABM_Agent_Store {
 	/** A pending change nobody decided on stops being offered after this long. */
 	const EXPIRE_DAYS = 7;
 
-	const STATUSES = array( 'pending', 'approved', 'rejected', 'stale', 'expired' );
+	/**
+	 * "approving" is a claim: one request has taken the change and is applying
+	 * it. It exists so two approvals arriving together cannot both apply.
+	 */
+	const STATUSES = array( 'pending', 'approving', 'approved', 'rejected', 'stale', 'expired' );
 
 	/** @return string */
 	public static function changes_table() {
@@ -165,17 +169,20 @@ class ABM_Agent_Store {
 	}
 
 	/**
-	 * Move a pending change to a decided state. A change that is no longer
-	 * pending is left alone, so a second click cannot re-decide it.
+	 * Move a change from one state to another, only if it is still in the first.
+	 *
+	 * The condition is in the UPDATE itself, so of two requests trying the same
+	 * transition exactly one is told it succeeded.
 	 *
 	 * @param int    $id         Row ID.
 	 * @param string $status     New status.
 	 * @param int    $decided_by User ID, 0 for the system.
+	 * @param string $from       Status the row must currently have.
 	 * @return bool Whether this call made the transition.
 	 */
-	public static function set_change_status( $id, $status, $decided_by = 0 ) {
+	public static function set_change_status( $id, $status, $decided_by = 0, $from = 'pending' ) {
 		global $wpdb;
-		if ( ! in_array( $status, self::STATUSES, true ) ) {
+		if ( ! in_array( $status, self::STATUSES, true ) || ! in_array( $from, self::STATUSES, true ) ) {
 			return false;
 		}
 
@@ -189,7 +196,7 @@ class ABM_Agent_Store {
 			),
 			array(
 				'id'     => (int) $id,
-				'status' => 'pending',
+				'status' => $from,
 			),
 			array( '%s', '%s', '%d' ),
 			array( '%d', '%s' )
@@ -318,9 +325,10 @@ class ABM_Agent_Store {
 	/**
 	 * How many upcoming dates agents have skipped from one event lately.
 	 *
-	 * Only skips count, and only ones that were applied. A night put back with
-	 * unskip is taken off again, so skipping and restoring the same date does
-	 * not use up the allowance.
+	 * Counts applied skips and applied edits that dropped a date. Putting a
+	 * night back does not give the allowance back: a refund could be earned by
+	 * skipping and restoring a night that does not matter, and spent on ones
+	 * that do. The cost is an extra approval now and then.
 	 *
 	 * @param int $post_id Event ID.
 	 * @param int $days    Window.
@@ -336,9 +344,9 @@ class ABM_Agent_Store {
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$net = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COALESCE( SUM( CASE WHEN op = 'skip' THEN removed_upcoming WHEN op = 'unskip' THEN -1 ELSE 0 END ), 0 )
+				"SELECT COALESCE( SUM( removed_upcoming ), 0 )
 				 FROM {$table}
-				 WHERE post_id = %d AND outcome = 'applied' AND created_gmt >= %s AND op IN ('skip','unskip')",
+				 WHERE post_id = %d AND outcome = 'applied' AND created_gmt >= %s AND op IN ('skip','update') AND change_id = 0",
 				(int) $post_id,
 				$cutoff
 			)

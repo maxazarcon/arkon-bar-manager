@@ -158,6 +158,40 @@ class ABM_Agent_Ops {
 	 * @return array|WP_Error {outcome,reasons,removed,added,duplicate_of,event,change_id,approve_url,details}
 	 */
 	public static function run( $op, array $p, array $opts = array() ) {
+		// The duplicate check and the insert are two steps. A create that is
+		// retried while the first attempt is still running would pass the check
+		// twice, so creates of the same show on the same night take turns.
+		$lock = '';
+		if ( 'create' === $op && empty( $opts['dry_run'] ) ) {
+			$lock = 'abm_agent_lock_' . md5( ABM_Change_Classifier::normalize_title( (string) ( $p['title'] ?? '' ) ) . '|' . (string) ( $p['date'] ?? '' ) );
+			$held = (int) get_option( $lock, 0 );
+			if ( $held && time() - $held < 60 ) {
+				return new WP_Error( 'abm_busy', __( 'This event is already being created. Check for it before trying again.', 'arkon-bar-manager' ), array( 'status' => 409 ) );
+			}
+			if ( $held ) {
+				delete_option( $lock ); // Left behind by a request that died.
+			}
+			if ( ! add_option( $lock, time(), '', false ) ) {
+				return new WP_Error( 'abm_busy', __( 'This event is already being created. Check for it before trying again.', 'arkon-bar-manager' ), array( 'status' => 409 ) );
+			}
+		}
+
+		try {
+			return self::execute( $op, $p, $opts );
+		} finally {
+			if ( '' !== $lock ) {
+				delete_option( $lock );
+			}
+		}
+	}
+
+	/**
+	 * @param string $op   Operation.
+	 * @param array  $p    Parameters.
+	 * @param array  $opts Options, as for run().
+	 * @return array|WP_Error
+	 */
+	private static function execute( $op, array $p, array $opts ) {
 		if ( ! in_array( $op, self::OPS, true ) ) {
 			return new WP_Error( 'abm_unknown_op', __( 'Unknown operation.', 'arkon-bar-manager' ), array( 'status' => 400 ) );
 		}
@@ -268,10 +302,17 @@ class ABM_Agent_Ops {
 			return new WP_Error( 'abm_not_pending', sprintf( __( 'This change is already %s.', 'arkon-bar-manager' ), $change['status'] ), array( 'status' => 409 ) );
 		}
 
+		// Claim it before doing anything. Two approvals arriving together, or an
+		// approval racing a rejection, must not both act: only the request whose
+		// UPDATE moved the row out of "pending" carries on.
+		if ( ! ABM_Agent_Store::set_change_status( $change_id, 'approving', $user_id ) ) {
+			return new WP_Error( 'abm_not_pending', __( 'This change is already being decided.', 'arkon-bar-manager' ), array( 'status' => 409 ) );
+		}
+
 		// Approval was given for the event as it was when the change was asked
 		// for. If it has been edited since, that is a different event.
 		if ( $change['post_id'] && '' !== $change['fingerprint'] && ! hash_equals( $change['fingerprint'], self::fingerprint( $change['post_id'] ) ) ) {
-			ABM_Agent_Store::set_change_status( $change_id, 'stale', $user_id );
+			ABM_Agent_Store::set_change_status( $change_id, 'stale', $user_id, 'approving' );
 			self::log( $change['op'], $change['post_id'], 'stale', $change['summary'], $change_id );
 			return array(
 				'status' => 'stale',
@@ -288,11 +329,13 @@ class ABM_Agent_Ops {
 			)
 		);
 		if ( is_wp_error( $result ) ) {
+			// Nothing was applied, so hand the change back for another try.
+			ABM_Agent_Store::set_change_status( $change_id, 'pending', 0, 'approving' );
 			return $result;
 		}
 
 		if ( ABM_Change_Classifier::APPLIED !== $result['outcome'] ) {
-			ABM_Agent_Store::set_change_status( $change_id, 'stale', $user_id );
+			ABM_Agent_Store::set_change_status( $change_id, 'stale', $user_id, 'approving' );
 			return array(
 				'status' => 'stale',
 				'reason' => implode( ' ', $result['reasons'] ),
@@ -300,7 +343,7 @@ class ABM_Agent_Ops {
 			);
 		}
 
-		ABM_Agent_Store::set_change_status( $change_id, 'approved', $user_id );
+		ABM_Agent_Store::set_change_status( $change_id, 'approved', $user_id, 'approving' );
 
 		return array(
 			'status' => 'approved',
@@ -317,10 +360,9 @@ class ABM_Agent_Ops {
 	 */
 	public static function reject( $change_id, $user_id ) {
 		$change = ABM_Agent_Store::get_change( $change_id );
-		if ( ! $change || 'pending' !== $change['status'] ) {
+		if ( ! $change || ! ABM_Agent_Store::set_change_status( $change_id, 'rejected', $user_id ) ) {
 			return false;
 		}
-		ABM_Agent_Store::set_change_status( $change_id, 'rejected', $user_id );
 		self::log( $change['op'], $change['post_id'], 'rejected', $change['summary'], $change_id );
 		return true;
 	}
@@ -343,8 +385,14 @@ class ABM_Agent_Ops {
 		$id        = 0;
 		$today     = current_time( 'Y-m-d' );
 
+		// These operations act on anyone's events and read the whole calendar to
+		// do it, so they need the capability to edit events that are not yours.
+		if ( ! $type || ! current_user_can( $type->cap->edit_others_posts ) ) {
+			return self::forbidden();
+		}
+
 		if ( $creating ) {
-			if ( ! $type || ! current_user_can( $type->cap->create_posts ) ) {
+			if ( ! current_user_can( $type->cap->create_posts ) ) {
 				return self::forbidden();
 			}
 		} else {
@@ -425,9 +473,32 @@ class ABM_Agent_Ops {
 				$new_date = array_key_exists( 'date', $in ) ? $in['date'] : $cur['date'];
 				$new_rule = array_key_exists( 'rule', $in ) ? $in['rule'] : $cur['rule'];
 
+				// For an event that holds its dates verbatim, "the current time" is
+				// what its upcoming nights say, not what the time fields say: the
+				// admin can change the fields without the nights following, so the
+				// two can disagree. Comparing against the fields would call a real
+				// change no change, and filling an unsent field from them would
+				// overwrite the nights with a value nobody asked for.
+				$row_times = null;
+				if ( $locked ) {
+					foreach ( $rows as $row ) {
+						if ( $row['date'] >= $today ) {
+							$row_times = array( $row['start'], $row['end'] );
+							break;
+						}
+					}
+				}
+				$now_start = $row_times ? $row_times[0] : $cur['start'];
+				$now_end   = $row_times ? $row_times[1] : $cur['end'];
+				$times     = array(
+					array_key_exists( 'start', $in ) ? $in['start'] : $now_start,
+					array_key_exists( 'end', $in ) ? $in['end'] : $now_end,
+				);
+
 				$ctx['dates_meta_changed'] = $new_date !== $cur['date'];
 				$ctx['rule_changed']       = $new_rule != $cur['rule']; // phpcs:ignore Universal.Operators.StrictComparisons.LooseNotEqual -- arrays of scalars, order-normalized.
-				$ctx['time_changed']       = ( array_key_exists( 'start', $in ) && $in['start'] !== $cur['start'] ) || ( array_key_exists( 'end', $in ) && $in['end'] !== $cur['end'] );
+				$ctx['time_changed']       = ( array_key_exists( 'start', $in ) || array_key_exists( 'end', $in ) ) && ( $times[0] !== $now_start || $times[1] !== $now_end || ( $locked && ! self::upcoming_uniform( $rows, $today ) ) );
+				$ctx['recent_removed']     = $id ? ABM_Agent_Store::recent_removed( $id ) : 0;
 
 				// Giving a locked event a rule replaces its held dates; clearing a
 				// rule it does not have changes nothing.
@@ -459,8 +530,9 @@ class ABM_Agent_Ops {
 					/* translators: 1: event title, 2: comma-separated field names. */
 					: sprintf( __( 'Change "%1$s": %2$s', 'arkon-bar-manager' ), $label, implode( ', ', array_keys( $in ) ) );
 
-				$apply = static function () use ( $id, $in, $status, $publish_at, $creating, $locked, $takes_rule ) {
-					return self::apply_fields( $id, $in, $status, $publish_at, $creating, $locked && ! $takes_rule );
+				$row_write = ( $locked && ! $takes_rule && $ctx['time_changed'] ) ? $times : null;
+				$apply     = static function () use ( $id, $in, $status, $publish_at, $creating, $locked, $takes_rule, $row_write ) {
+					return self::apply_fields( $id, $in, $status, $publish_at, $creating, $locked && ! $takes_rule, $row_write );
 				};
 				break;
 
@@ -533,6 +605,14 @@ class ABM_Agent_Ops {
 
 				if ( ! $rule_driven && ! $locked ) {
 					return self::refusal( $id, $label, __( 'This event runs on a single date, so there is no series to skip a night of. Move it or trash it instead.', 'arkon-bar-manager' ) );
+				}
+
+				// A verbatim event is only protected from being regenerated while it
+				// has more than one date. Skipped down to one, the next save would
+				// rebuild it from its date field: the skipped night would come back
+				// and the real one would go.
+				if ( 'skip' === $op && ! $rule_driven && in_array( $date, $dates, true ) && count( $dates ) <= 2 ) {
+					return self::refusal( $id, $label, __( 'This event has only two dates left, and it holds them exactly as imported. Skipping one would leave a single date that the next save could replace. Trash the event, or give it a repeat rule, instead.', 'arkon-bar-manager' ) );
 				}
 
 				if ( 'skip' === $op ) {
@@ -810,10 +890,11 @@ class ABM_Agent_Ops {
 	 * @param string $status     Status for a new event.
 	 * @param string $publish_at Local publish time for a scheduled new event.
 	 * @param bool   $creating   Whether to insert.
-	 * @param bool   $verbatim   The event holds its dates verbatim and keeps doing so.
+	 * @param bool       $verbatim   The event holds its dates verbatim and keeps doing so.
+	 * @param array|null $row_write  [ start, end ] to give its upcoming nights, or null to leave them.
 	 * @return array|WP_Error {post_id,details}
 	 */
-	private static function apply_fields( $id, array $in, $status, $publish_at, $creating, $verbatim ) {
+	private static function apply_fields( $id, array $in, $status, $publish_at, $creating, $verbatim, $row_write = null ) {
 		$details = array();
 
 		if ( $creating ) {
@@ -898,12 +979,13 @@ class ABM_Agent_Ops {
 
 		// A verbatim event's rows are not regenerated, so a time change has to be
 		// written to the rows themselves or the calendar would not move.
-		if ( $verbatim && ( array_key_exists( 'start', $in ) || array_key_exists( 'end', $in ) ) ) {
-			$details['rows_changed'] = ABM_Occurrences::set_upcoming_times(
-				$id,
-				(string) get_post_meta( $id, 'abm_event_time_start', true ),
-				(string) get_post_meta( $id, 'abm_event_time_end', true )
-			);
+		// The times come from the plan, which read them from the nights: a field
+		// the caller did not send keeps the value the nights already had.
+		if ( $verbatim && is_array( $row_write ) ) {
+			$details['rows_changed'] = ABM_Occurrences::set_upcoming_times( $id, (string) $row_write[0], (string) $row_write[1] );
+			// Bring the fields into line with the nights, so the two agree again.
+			update_post_meta( $id, 'abm_event_time_start', (string) $row_write[0] );
+			update_post_meta( $id, 'abm_event_time_end', (string) $row_write[1] );
 		}
 
 		self::rederive( $id );
@@ -1043,7 +1125,7 @@ class ABM_Agent_Ops {
 	 */
 	private static function plan_category( $op, array $p ) {
 		$type = get_post_type_object( ABM_POST_TYPE );
-		if ( ! $type || ! current_user_can( $type->cap->edit_posts ) ) {
+		if ( ! $type || ! current_user_can( $type->cap->edit_others_posts ) ) {
 			return self::forbidden();
 		}
 

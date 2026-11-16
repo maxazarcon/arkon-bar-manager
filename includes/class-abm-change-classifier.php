@@ -136,6 +136,11 @@ class ABM_Change_Classifier {
 			$result = self::hold( $result, 'This removes a live event from the calendar.' );
 		} elseif ( ! $is_public ) {
 			$result = self::hold( $result, 'This takes a live event off the calendar.' );
+		} elseif ( 'publish' === (string) ( $before['status'] ?? '' ) && 'publish' !== (string) ( $after['status'] ?? '' ) ) {
+			// A scheduled event is protected like a live one, but it is not on
+			// the calendar yet. Scheduling an event that is already live hides
+			// every one of its dates until the scheduled time.
+			$result = self::hold( $result, 'This takes a live event off the calendar until its scheduled time.' );
 		}
 
 		$upcoming = array_values(
@@ -151,8 +156,13 @@ class ABM_Change_Classifier {
 			$result = self::hold( $result, sprintf( 'This removes %d upcoming dates from the calendar.', count( $upcoming ) ) );
 		}
 
-		if ( 'skip' === $op && (int) ( $ctx['recent_removed'] ?? 0 ) + count( $upcoming ) > self::MAX_SKIPS_IN_WINDOW ) {
-			$result = self::hold( $result, 'Several dates have already been skipped from this event recently.' );
+		// One night at a time adds up. This counts every way a night can be
+		// taken off a series -- a skip, or an edit that drops one date -- so the
+		// per-change limit above cannot be walked around in single steps. A
+		// one-off being moved is not a series losing nights.
+		if ( count( $before_dates ) > 1 && $upcoming && in_array( $op, array( 'skip', 'update' ), true )
+			&& (int) ( $ctx['recent_removed'] ?? 0 ) + count( $upcoming ) > self::MAX_SKIPS_IN_WINDOW ) {
+			$result = self::hold( $result, 'Several dates have already been taken off this event recently.' );
 		}
 
 		if ( ! empty( $ctx['locked'] ) && ! empty( $ctx['time_changed'] ) && empty( $ctx['upcoming_times_uniform'] ) ) {

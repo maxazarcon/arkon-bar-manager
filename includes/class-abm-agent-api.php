@@ -50,6 +50,10 @@ class ABM_Agent_API {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_filter( 'rest_pre_dispatch', array( $this, 'confine_agent' ), 1, 3 );
 		add_action( 'admin_init', array( $this, 'block_admin' ), 1 );
+		add_filter( 'authenticate', array( $this, 'refuse_xmlrpc' ), 100 );
+		add_filter( 'pre_delete_post', array( $this, 'refuse_delete' ), 10, 1 );
+		add_filter( 'pre_delete_attachment', array( $this, 'refuse_delete' ), 10, 1 );
+		add_filter( 'map_meta_cap', array( $this, 'limit_to_events' ), 10, 4 );
 		add_action( 'parse_request', array( $this, 'maybe_preview' ) );
 	}
 
@@ -120,10 +124,69 @@ class ABM_Agent_API {
 	 * An agent account has no business in the admin.
 	 */
 	public function block_admin() {
-		if ( wp_doing_ajax() || ! self::is_agent() ) {
+		if ( ! self::is_agent() ) {
 			return;
 		}
 		wp_die( esc_html__( 'This account can only use the event agent API.', 'arkon-bar-manager' ), '', array( 'response' => 403 ) );
+	}
+
+	/**
+	 * Refuse an agent account over XML-RPC.
+	 *
+	 * XML-RPC is a second remote API with its own edit and delete calls, and it
+	 * accepts the same passwords. Its delete only diverts to the trash for
+	 * posts and pages: an event deleted that way is gone. Confining the account
+	 * to abm/v1 means nothing unless this door is shut as well.
+	 *
+	 * @param WP_User|WP_Error|null $user Result of authentication so far.
+	 * @return WP_User|WP_Error|null
+	 */
+	public function refuse_xmlrpc( $user ) {
+		if ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST && $user instanceof WP_User && self::is_agent( $user ) ) {
+			return new WP_Error( 'abm_agent_route_forbidden', __( 'This account can only use the event agent API.', 'arkon-bar-manager' ) );
+		}
+		return $user;
+	}
+
+	/**
+	 * An agent account never deletes anything permanently, by any route.
+	 *
+	 * The agent API has no call that does. This is the backstop for every
+	 * other way WordPress has of reaching wp_delete_post().
+	 *
+	 * @param mixed $check Short-circuit value; null lets the delete proceed.
+	 * @return mixed
+	 */
+	public function refuse_delete( $check ) {
+		return self::is_agent() ? false : $check;
+	}
+
+	/**
+	 * Keep the role's capabilities to events and images.
+	 *
+	 * Events use the ordinary post capabilities, so the role that can edit and
+	 * trash events could, on paper, do the same to blog posts and pages. It
+	 * cannot reach a route that would let it, and this makes sure the answer
+	 * to "may this account touch that post" is no in any case.
+	 *
+	 * @param string[] $caps    Primitive capabilities required.
+	 * @param string   $cap     Capability being checked.
+	 * @param int      $user_id User.
+	 * @param array    $args    Usually the object ID first.
+	 * @return string[]
+	 */
+	public function limit_to_events( $caps, $cap, $user_id, $args ) {
+		if ( ! in_array( $cap, array( 'edit_post', 'delete_post', 'publish_post', 'read_post' ), true ) || empty( $args[0] ) ) {
+			return $caps;
+		}
+		$user = get_userdata( (int) $user_id );
+		if ( ! $user || ! self::is_agent( $user ) ) {
+			return $caps;
+		}
+		if ( ! in_array( get_post_type( (int) $args[0] ), array( ABM_POST_TYPE, 'attachment' ), true ) ) {
+			return array( 'do_not_allow' );
+		}
+		return $caps;
 	}
 
 	/* --------------------------------------------------------------------- */
@@ -173,10 +236,20 @@ class ABM_Agent_API {
 		}
 	}
 
-	/** @return bool|WP_Error */
+	/**
+	 * Who may use this API at all.
+	 *
+	 * It lists every event whatever its status, shows held changes and the
+	 * activity log, and acts on events regardless of author. That is an
+	 * editor's reach, so it asks for an editor's capability: an author or
+	 * contributor, who can only see and change their own posts elsewhere, gets
+	 * nothing extra here.
+	 *
+	 * @return bool|WP_Error
+	 */
 	public function can_read() {
 		$type = get_post_type_object( ABM_POST_TYPE );
-		if ( $type && current_user_can( $type->cap->edit_posts ) ) {
+		if ( $type && current_user_can( $type->cap->edit_others_posts ) ) {
 			return true;
 		}
 		return new WP_Error( 'abm_forbidden', __( 'You are not allowed to use the event agent API.', 'arkon-bar-manager' ), array( 'status' => rest_authorization_required_code() ) );
