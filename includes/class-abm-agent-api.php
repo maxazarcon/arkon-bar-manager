@@ -39,6 +39,11 @@ class ABM_Agent_API {
 	/** @var ABM_Agent_API|null */
 	private static $instance = null;
 
+	/** User whose exact registered API callback is currently executing. */
+	private $agent_scope_user = 0;
+
+	const OPERATION_CAPS = array( 'upload_files', 'edit_posts', 'edit_published_posts', 'edit_others_posts', 'edit_private_posts', 'publish_posts', 'delete_posts', 'delete_published_posts', 'delete_others_posts' );
+
 	public static function instance() {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -47,6 +52,8 @@ class ABM_Agent_API {
 	}
 
 	private function __construct() {
+		// In-place upgrades must strip old grants before the next admin visit.
+		self::install_role();
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_filter( 'rest_pre_dispatch', array( $this, 'confine_agent' ), 1, 3 );
 		add_action( 'admin_init', array( $this, 'block_admin' ), 1 );
@@ -54,6 +61,7 @@ class ABM_Agent_API {
 		add_filter( 'pre_delete_post', array( $this, 'refuse_delete' ), 10, 1 );
 		add_filter( 'pre_delete_attachment', array( $this, 'refuse_delete' ), 10, 1 );
 		add_filter( 'map_meta_cap', array( $this, 'limit_to_events' ), 10, 4 );
+		add_filter( 'user_has_cap', array( $this, 'agent_capabilities' ), 100, 4 );
 		add_action( 'parse_request', array( $this, 'maybe_preview' ) );
 	}
 
@@ -61,35 +69,48 @@ class ABM_Agent_API {
 	/* Role                                                                  */
 	/* --------------------------------------------------------------------- */
 
-	/**
-	 * Create the Event Agent role, or bring its capabilities up to date.
-	 *
-	 * The delete capabilities are what WordPress requires to move a post to the
-	 * trash. Nothing in this API deletes permanently, and the role cannot reach
-	 * a route that does.
-	 */
+	/** Keep persisted authority harmless even when this plugin is disabled. */
 	public static function install_role() {
-		$caps = array(
-			'read'                   => true,
-			'upload_files'           => true,
-			'edit_posts'             => true,
-			'edit_published_posts'   => true,
-			'edit_others_posts'      => true,
-			'edit_private_posts'     => true,
-			'publish_posts'          => true,
-			'delete_posts'           => true,
-			'delete_published_posts' => true,
-			'delete_others_posts'    => true,
-		);
-
 		$role = get_role( self::ROLE );
 		if ( ! $role ) {
-			add_role( self::ROLE, __( 'Event Agent', 'arkon-bar-manager' ), $caps );
+			add_role( self::ROLE, __( 'Event Agent', 'arkon-bar-manager' ), array( 'read' => true ) );
 			return;
 		}
-		foreach ( $caps as $cap => $grant ) {
-			$role->add_cap( $cap, $grant );
+		foreach ( array_keys( $role->capabilities ) as $cap ) {
+			if ( 'read' !== $cap ) {
+				$role->remove_cap( $cap );
+			}
 		}
+		if ( empty( $role->capabilities['read'] ) ) {
+			$role->add_cap( 'read', true );
+		}
+	}
+
+	/** Grant operational capabilities only during our own guarded callbacks. */
+	public function agent_capabilities( $allcaps, $caps, $args, $user ) {
+		if ( ! self::is_agent( $user ) ) {
+			return $allcaps;
+		}
+		$allowed = array( 'read' => true );
+		if ( $this->agent_scope_user && (int) $user->ID === $this->agent_scope_user ) {
+			foreach ( self::OPERATION_CAPS as $cap ) {
+				$allowed[ $cap ] = true;
+			}
+		}
+		return $allowed;
+	}
+
+	/** Scope privileges to exact registered handlers, never a URL prefix alone. */
+	private function scoped_callback( $callback ) {
+		return function ( $request ) use ( $callback ) {
+			$previous = $this->agent_scope_user;
+			$this->agent_scope_user = (int) get_current_user_id();
+			try {
+				return call_user_func( $callback, $request );
+			} finally {
+				$this->agent_scope_user = $previous;
+			}
+		};
 	}
 
 	/**
@@ -233,8 +254,8 @@ class ABM_Agent_API {
 				$route[0],
 				array(
 					'methods'             => $route[1],
-					'callback'            => array( $this, $route[2] ),
-					'permission_callback' => $route[3],
+					'callback'            => $this->scoped_callback( array( $this, $route[2] ) ),
+					'permission_callback' => $this->scoped_callback( $route[3] ),
 				)
 			);
 		}
