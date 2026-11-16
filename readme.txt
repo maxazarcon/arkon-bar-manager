@@ -341,16 +341,18 @@ asks for gets one of three answers:
   show is already on that night, or the event holds its dates as imported and
   the date field cannot move them.
 
-What waits for approval is anything that takes dates off the public calendar:
-trashing or unpublishing a live event, a change that removes more than one
-upcoming date from a live series, more than two skipped nights on one event in
-thirty days, a new event whose title is nearly identical to one already on
-that night, and renaming or deleting a category. Drafts are not on the
-calendar, so a draft can be reshaped or trashed freely. Nothing is ever
-deleted permanently.
+Approval is required for trashing or unpublishing a live event, removing more
+than one upcoming date from a live series, or more than two single-night
+removals from one series in thirty days. A single removal within that limit
+can be applied immediately. Near-duplicate checks cover publishing and title
+or date changes as well as new events. Flattening varied imported-event times
+and renaming or deleting a category also require approval. Drafts can be
+reshaped or trashed freely. Events and flyers are not permanently deleted;
+approved category deletion removes the category, but keeps its events.
 
 Add `dry_run=1` to any change to see the answer, and the exact dates that
-would be added or removed, without making it.
+would be added or removed, without making it. Dry runs return HTTP 200 even
+when approval is required or the operation is refused: inspect `outcome`.
 
 Reading:
 
@@ -477,10 +479,11 @@ does. MINOR = new surface area. PATCH = it was already supposed to work that way
   set up and change repeating events, skip a single night and put it back, set
   and remove flyers, and add a pasted list of shows.
 * Every change an assistant asks for is checked first. Clear changes are made
-  at once. Anything that would take dates off the public calendar is held:
+  at once. Higher-impact removals are held:
   trashing or unpublishing a live event, removing more than one upcoming date
   from a live series, and a new event that looks like one already on that
-  night. Nothing is deleted permanently.
+  night. Events and flyers are not permanently deleted; approved category
+  deletion removes only the category.
 * New: Events > Agent Changes. Held changes wait here, with the exact dates
   that would come off the calendar, for an administrator to approve or reject.
   Approving applies the change immediately. If the event was edited after the

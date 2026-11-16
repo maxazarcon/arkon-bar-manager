@@ -294,7 +294,7 @@ class ABM_Agent_Ops {
 					'op'          => $op,
 					'post_id'     => $post_id,
 					'params'      => $p,
-					'fingerprint' => $post_id ? self::fingerprint( $post_id ) : '',
+					'fingerprint' => $post_id ? self::fingerprint( $post_id ) : self::category_fingerprint( (int) ( $p['id'] ?? 0 ) ),
 					'summary'     => $summary,
 					'user_id'     => get_current_user_id(),
 				)
@@ -351,12 +351,17 @@ class ABM_Agent_Ops {
 
 		// Approval was given for the event as it was when the change was asked
 		// for. If it has been edited since, that is a different event.
-		if ( $change['post_id'] && '' !== $change['fingerprint'] && ! hash_equals( $change['fingerprint'], self::fingerprint( $change['post_id'] ) ) ) {
+		$is_category = in_array( $change['op'], array( 'category_rename', 'category_delete' ), true );
+		$current_fingerprint = $is_category
+			? self::category_fingerprint( (int) ( $change['params']['id'] ?? 0 ) )
+			: self::fingerprint( $change['post_id'] );
+		if ( ( $is_category && ( '' === $change['fingerprint'] || '' === $current_fingerprint ) ) ||
+			( ( $is_category || $change['post_id'] ) && '' !== $change['fingerprint'] && ! hash_equals( $change['fingerprint'], $current_fingerprint ) ) ) {
 			ABM_Agent_Store::set_change_status( $change_id, 'stale', $user_id, 'approving' );
 			self::log( $change['op'], $change['post_id'], 'stale', $change['summary'], $change_id );
 			return array(
 				'status' => 'stale',
-				'reason' => __( 'The event changed after this was requested, so nothing was applied.', 'arkon-bar-manager' ),
+				'reason' => __( 'The event or category changed after this was requested, so nothing was applied. Request a fresh review.', 'arkon-bar-manager' ),
 			);
 		}
 
@@ -572,6 +577,10 @@ class ABM_Agent_Ops {
 					: sprintf( __( 'Change "%1$s": %2$s', 'arkon-bar-manager' ), $label, implode( ', ', array_keys( $in ) ) );
 
 				$row_write = ( $locked && ! $takes_rule && $ctx['time_changed'] ) ? $times : null;
+				if ( null !== $row_write ) {
+					/* translators: 1: start time, 2: end time (empty means unspecified). */
+					$text .= ' ' . sprintf( __( 'Set every upcoming occurrence to start "%1$s" and end "%2$s".', 'arkon-bar-manager' ), $row_write[0], $row_write[1] );
+				}
 				$apply     = static function () use ( $id, $in, $status, $publish_at, $creating, $locked, $takes_rule, $row_write ) {
 					return self::apply_fields( $id, $in, $status, $publish_at, $creating, $locked && ! $takes_rule, $row_write );
 				};
@@ -1158,6 +1167,28 @@ class ABM_Agent_Ops {
 	/* --------------------------------------------------------------------- */
 	/* Categories                                                            */
 	/* --------------------------------------------------------------------- */
+
+	/** Snapshot category identity and membership for approval staleness. */
+	private static function category_fingerprint( $id ) {
+		$term = get_term( (int) $id, ABM_TAXONOMY );
+		if ( ! $term || is_wp_error( $term ) ) {
+			return '';
+		}
+		$objects = get_objects_in_term( (int) $id, ABM_TAXONOMY );
+		if ( is_wp_error( $objects ) ) {
+			return '';
+		}
+		$objects = array_map( 'intval', $objects );
+		sort( $objects, SORT_NUMERIC );
+		return hash( 'sha256', (string) wp_json_encode( array(
+			'id' => (int) $term->term_id,
+			'name' => $term->name,
+			'slug' => $term->slug,
+			'parent' => (int) $term->parent,
+			'description' => $term->description,
+			'objects' => $objects,
+		) ) );
+	}
 
 	/**
 	 * @param string $op Operation.
