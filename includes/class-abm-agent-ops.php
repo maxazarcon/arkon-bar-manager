@@ -47,10 +47,7 @@ class ABM_Agent_Ops {
 
 		$id    = (int) $post->ID;
 		$cost  = (string) get_post_meta( $id, 'abm_event_cost', true );
-		// The stored value, not get_post_thumbnail_id(): a site-wide fallback
-		// image can be filtered in there, and an agent needs to know whether
-		// this event has a flyer of its own.
-		$thumb = (int) get_post_meta( $id, '_thumbnail_id', true );
+		$thumb = self::own_flyer_id( $id );
 		$rule  = ABM_Occurrences::get_rule( $id );
 		$stats = ABM_Occurrences::stats_for( $id );
 		$terms = wp_get_object_terms( $id, ABM_TAXONOMY, array( 'fields' => 'ids' ) );
@@ -1191,6 +1188,24 @@ class ABM_Agent_Ops {
 			}
 		}
 		return $rows;
+	}
+
+	/**
+	 * The flyer this event was actually given, or 0.
+	 *
+	 * Read from the table on purpose. A fallback-image plugin can answer
+	 * get_post_thumbnail_id() and get_post_meta() for an event that has no
+	 * image, and can write its answer into the meta cache, so neither says
+	 * whether the event has a flyer of its own. An agent deciding whether a
+	 * show still needs artwork has to know that.
+	 *
+	 * @param int $id Event ID.
+	 * @return int Attachment ID.
+	 */
+	private static function own_flyer_id( $id ) {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = '_thumbnail_id' ORDER BY meta_id DESC LIMIT 1", (int) $id ) );
 	}
 
 	/** @return array */
