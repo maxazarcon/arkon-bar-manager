@@ -900,6 +900,161 @@ class ABM_Occurrences {
 		return self::$recurring_cache[ $post_id ];
 	}
 
+	/* --------------------------------------------------------------------- */
+	/* Single-date edits                                                     */
+	/* --------------------------------------------------------------------- */
+
+	/*
+	 * These exist for events that hold their dates verbatim. A rule-driven
+	 * event is changed through its rule and its skip list, and regenerated. An
+	 * imported one has no rule to change, so skipping a night or correcting its
+	 * time means editing the rows themselves. None of these touch the verbatim
+	 * mark: an event edited this way is still an event with no rule.
+	 */
+
+	/**
+	 * Every stored row for one event, oldest first.
+	 *
+	 * @param int $post_id Event ID.
+	 * @return array<int,array{date:string,start:string,end:string}>
+	 */
+	public static function rows_for( $post_id ) {
+		global $wpdb;
+		$table = self::table();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = (array) $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT occur_date, start_time, end_time FROM {$table}
+				 WHERE post_id = %d ORDER BY occur_date ASC, id ASC LIMIT %d",
+				(int) $post_id,
+				self::MAX_ROWS_PER_EVENT
+			)
+		);
+
+		$out = array();
+		foreach ( $rows as $row ) {
+			$out[] = array(
+				'date'  => (string) $row->occur_date,
+				'start' => (string) $row->start_time,
+				'end'   => (string) $row->end_time,
+			);
+		}
+		return $out;
+	}
+
+	/**
+	 * Remove one date from an event and hand back what was there.
+	 *
+	 * The row is returned so the caller can keep it and put the night back
+	 * exactly as it was, times included.
+	 *
+	 * @param int    $post_id Event ID.
+	 * @param string $ymd     Date.
+	 * @return array{date:string,start:string,end:string}|null The removed row, or null if the event had no such date.
+	 */
+	public static function remove_date( $post_id, $ymd ) {
+		global $wpdb;
+
+		$post_id = (int) $post_id;
+		$ymd     = abm_sanitize_date( $ymd );
+		if ( '' === $ymd ) {
+			return null;
+		}
+
+		$table = self::table();
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT occur_date, start_time, end_time FROM {$table} WHERE post_id = %d AND occur_date = %s LIMIT 1", $post_id, $ymd ) );
+		if ( ! $row ) {
+			return null;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->delete(
+			$table,
+			array(
+				'post_id'    => $post_id,
+				'occur_date' => $ymd,
+			),
+			array( '%d', '%s' )
+		);
+		self::flush_cache( $post_id );
+
+		return array(
+			'date'  => (string) $row->occur_date,
+			'start' => (string) $row->start_time,
+			'end'   => (string) $row->end_time,
+		);
+	}
+
+	/**
+	 * Add one date to an event. Does nothing if the event already has it.
+	 *
+	 * @param int    $post_id Event ID.
+	 * @param string $ymd     Date.
+	 * @param string $start   H:i or ''.
+	 * @param string $end     H:i, 'close' or ''.
+	 * @return bool Whether a row was written.
+	 */
+	public static function add_row( $post_id, $ymd, $start, $end ) {
+		global $wpdb;
+
+		$post_id = (int) $post_id;
+		$ymd     = abm_sanitize_date( $ymd );
+		if ( '' === $ymd || self::has_date( $post_id, $ymd ) ) {
+			return false;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$written = $wpdb->insert(
+			self::table(),
+			array(
+				'post_id'    => $post_id,
+				'occur_date' => $ymd,
+				'start_time' => (string) $start,
+				'end_time'   => (string) $end,
+			),
+			array( '%d', '%s', '%s', '%s' )
+		);
+		self::flush_cache( $post_id );
+
+		return (bool) $written;
+	}
+
+	/**
+	 * Give every upcoming date of an event the same times.
+	 *
+	 * Past rows are left as they were: they are the record of what happened.
+	 *
+	 * @param int    $post_id Event ID.
+	 * @param string $start   H:i or ''.
+	 * @param string $end     H:i, 'close' or ''.
+	 * @return int Rows changed.
+	 */
+	public static function set_upcoming_times( $post_id, $start, $end ) {
+		global $wpdb;
+
+		$post_id = (int) $post_id;
+		$table   = self::table();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$changed = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$table} SET start_time = %s, end_time = %s
+				 WHERE post_id = %d AND occur_date >= %s AND ( start_time <> %s OR end_time <> %s )",
+				(string) $start,
+				(string) $end,
+				$post_id,
+				current_time( 'Y-m-d' ),
+				(string) $start,
+				(string) $end
+			)
+		);
+		self::flush_cache( $post_id );
+
+		return (int) $changed;
+	}
+
 	/**
 	 * Drop a memoized answer after the rows behind it change.
 	 *

@@ -482,6 +482,37 @@ class ABM_Bulk {
 	/* --------------------------------------------------------------------- */
 
 	/**
+	 * Read a pasted booking list into rows, without writing anything.
+	 *
+	 * The same reading the Paste box does, for callers that are not this screen.
+	 * Rows come back in the table's shape with the parser's notes intact, next
+	 * to the lines that ask for changes to existing events and the lines that
+	 * could not be read at all.
+	 *
+	 * @param string $text  Pasted text.
+	 * @param string $today Y-m-d used to resolve dates written without a year. Defaults to the site's today.
+	 * @return array{rows:array,actions:array,skipped:array}
+	 */
+	public function parse_text( $text, $today = '' ) {
+		$today  = abm_sanitize_date( $today );
+		$parsed = ABM_Bulk_Parser::parse( (string) $text, '' !== $today ? $today : current_time( 'Y-m-d' ) );
+
+		$rows = array();
+		foreach ( (array) $parsed['rows'] as $row ) {
+			if ( count( $rows ) >= self::MAX_ROWS ) {
+				break;
+			}
+			$rows[] = $this->normalize( (array) $row );
+		}
+
+		return array(
+			'rows'    => $rows,
+			'actions' => (array) $parsed['actions'],
+			'skipped' => (array) $parsed['skipped'],
+		);
+	}
+
+	/**
 	 * @return array<string,mixed>
 	 */
 	private function blank_row() {
@@ -504,7 +535,7 @@ class ABM_Bulk {
 	 * @param array $raw Partial row.
 	 * @return array<string,mixed>
 	 */
-	private function normalize( array $raw ) {
+	public function normalize( array $raw ) {
 		$row = array_merge( $this->blank_row(), array_intersect_key( $raw, $this->blank_row() ) );
 
 		$row['date']        = abm_sanitize_date( $row['date'] );
@@ -746,7 +777,7 @@ class ABM_Bulk {
 	 * @param array $rows Rows.
 	 * @return array{rows:array,matched:int,ambiguous:int}
 	 */
-	private function match_flyers( array $rows ) {
+	public function match_flyers( array $rows ) {
 		$matched   = 0;
 		$ambiguous = 0;
 
