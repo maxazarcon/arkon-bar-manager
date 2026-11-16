@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -472,6 +472,16 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 3.1.1 =
+
+* Category rename and delete approvals now check that the category and its
+  assigned events have not changed since the request. Older pending category
+  requests without that snapshot need a fresh review before they can apply.
+* Imported-event time change summaries now show both start and end values
+  that will be applied to every upcoming occurrence.
+* Clarifies approval thresholds, category deletion and dry-run responses in
+  the API reference.
 
 = 3.1.0 =
 * New: an agent API under `abm/v1`. An automated assistant can now do what the
