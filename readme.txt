@@ -4,7 +4,7 @@ Tags: events, event calendar, calendar, venue, ical
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 3.0.1
+Stable tag: 3.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -327,6 +327,72 @@ Check it before editing dates:
 The object costs one query per event and is only computed when asked for, so
 listing events with `_fields` that omit it is free.
 
+= Agent API =
+
+A second set of routes, under `abm/v1`, is meant for an automated assistant
+rather than a person. It can do what the event screens do, and every change it
+asks for gets one of three answers:
+
+* `applied` (200, or 201 for something new) -- done, and the response carries
+  the event as it is now stored, including its dates.
+* `approval_required` (202) -- nothing changed. The request is waiting under
+  Events > Agent Changes for an administrator to approve or reject.
+* `refused` (409) -- nothing changed, and approving would not help: the same
+  show is already on that night, or the event holds its dates as imported and
+  the date field cannot move them.
+
+What waits for approval is anything that takes dates off the public calendar:
+trashing or unpublishing a live event, a change that removes more than one
+upcoming date from a live series, more than two skipped nights on one event in
+thirty days, a new event whose title is nearly identical to one already on
+that night, and renaming or deleting a category. Drafts are not on the
+calendar, so a draft can be reshaped or trashed freely. Nothing is ever
+deleted permanently.
+
+Add `dry_run=1` to any change to see the answer, and the exact dates that
+would be added or removed, without making it.
+
+Reading:
+
+* `GET /abm/v1/occurrences?from=&to=` -- one row per night between two dates,
+  optionally filtered by `status`, `category` and `search`
+* `GET /abm/v1/events`, `GET /abm/v1/events/<id>` -- events, with `status`
+  (`trash` included) and `search`
+* `GET /abm/v1/categories`, `GET /abm/v1/changes`, `GET /abm/v1/log`
+* `GET /abm/v1/events/<id>/preview` -- a link, valid for ten minutes, to an
+  unpublished event's real page
+
+Changing:
+
+* `POST /abm/v1/events` -- create. `title` and `date` are required; also
+  `start_time`, `end_time`, `description`, `excerpt`, `cover`, `categories`,
+  `show_category`, `display_start_only`, `media_id`, `rule`, and `status`
+  (`draft` by default, `publish`, or `future` with `publish_at`)
+* `POST /abm/v1/events/<id>` -- change any of those fields except `status`
+* `POST /abm/v1/events/<id>/status` -- `draft`, `publish`, or `future`
+* `POST /abm/v1/events/<id>/trash` and `/restore`
+* `POST /abm/v1/events/<id>/skip` and `/unskip`, with `date`
+* `POST /abm/v1/media` -- upload a JPEG, PNG or WebP flyer, up to 5 MB
+* `POST /abm/v1/bulk/parse`, `/bulk/match-flyers`, `/bulk/create` -- the Bulk
+  Add screen's reading, flyer matching and creation
+* `POST /abm/v1/categories`, `POST` or `DELETE /abm/v1/categories/<id>`
+
+`cover` is an object: `{"mode": ""}` for not specified, `{"mode": "none"}` for
+No cover, `{"mode": "amount", "value": "10"}` for a charge. `rule` is an
+object with `type` (`daily`, `weekly`, `monthly_date`, `monthly_day`),
+`interval`, `weekdays`, `until`, `count` and `exceptions`, or `null` for an
+event that does not repeat. `media_id` of `0` removes the flyer and leaves the
+image in the Media Library.
+
+On an event that holds its dates as imported, a time change is written to its
+upcoming nights and the response says how many; skipping a night removes that
+one night and remembers it, so it can be put back exactly.
+
+Give the assistant its own account with the **Event Agent** role. That account
+can reach `abm/v1` and nothing else: not the standard `wp/v2` routes, and not
+the admin. An administrator's own login can use `abm/v1` too and gets the same
+answers, but is not confined to it.
+
 = CSV import =
 
 Events > Import accepts a CSV exported from another calendar plugin. The format
@@ -370,10 +436,16 @@ unpacks to the correct folder name, so WordPress updates the plugin in place.
 * "Close" is shown literally on the frontend; calendar exports substitute the
   default "Close" time from Settings and roll past midnight automatically.
 * Uninstalling removes the plugin settings, the occurrence table and the
-  scheduled task that extends it. Events, their meta and the categories are
-  preserved; delete them in the admin first if you want them gone.
+  scheduled task that extends it, along with the agent API's held changes, its
+  activity log and the Event Agent role. Events, their meta and the categories
+  are preserved; delete them in the admin first if you want them gone.
 
 == Upgrade Notice ==
+
+= 3.1.0 =
+Adds an API for automated assistants and an approval screen for the changes
+they are not allowed to make alone. Nothing changes for existing events or for
+anyone using the admin.
 
 = 2.14.0 =
 Repeating events now export as recurring events rather than one night at a time.
@@ -398,6 +470,31 @@ site that has imported events from another calendar.
 
 Versioning is strict MAJOR.MINOR.PATCH. MAJOR = something that worked no longer
 does. MINOR = new surface area. PATCH = it was already supposed to work that way.
+
+= 3.1.0 =
+* New: an agent API under `abm/v1`. An automated assistant can now do what the
+  event screens do: create, edit, publish, schedule, trash and restore events,
+  set up and change repeating events, skip a single night and put it back, set
+  and remove flyers, and add a pasted list of shows.
+* Every change an assistant asks for is checked first. Clear changes are made
+  at once. Anything that would take dates off the public calendar is held:
+  trashing or unpublishing a live event, removing more than one upcoming date
+  from a live series, and a new event that looks like one already on that
+  night. Nothing is deleted permanently.
+* New: Events > Agent Changes. Held changes wait here, with the exact dates
+  that would come off the calendar, for an administrator to approve or reject.
+  Approving applies the change immediately. If the event was edited after the
+  assistant asked, nothing is applied.
+* The same screen lists everything assistants have done.
+* New: the Event Agent role, for an assistant's own account. It can use the
+  agent API and nothing else.
+* Any change can be tried with `dry_run` to see what it would do, and which
+  dates it would add or remove, without making it.
+* An unpublished event can be looked at through a signed link that expires
+  after ten minutes, so a draft can be checked without an admin login.
+* On an event that holds its dates as imported, the agent API can change the
+  time of its upcoming nights and skip or restore a single night. Editing such
+  an event's time in the admin still does not change its nights.
 
 = 3.0.1 =
 * A repeating event's iCal download is written in the site's own time zone. An

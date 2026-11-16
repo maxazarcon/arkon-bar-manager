@@ -47,7 +47,10 @@ class ABM_Agent_Ops {
 
 		$id    = (int) $post->ID;
 		$cost  = (string) get_post_meta( $id, 'abm_event_cost', true );
-		$thumb = (int) get_post_thumbnail_id( $id );
+		// The stored value, not get_post_thumbnail_id(): a site-wide fallback
+		// image can be filtered in there, and an agent needs to know whether
+		// this event has a flyer of its own.
+		$thumb = (int) get_post_meta( $id, '_thumbnail_id', true );
 		$rule  = ABM_Occurrences::get_rule( $id );
 		$stats = ABM_Occurrences::stats_for( $id );
 		$terms = wp_get_object_terms( $id, ABM_TAXONOMY, array( 'fields' => 'ids' ) );
