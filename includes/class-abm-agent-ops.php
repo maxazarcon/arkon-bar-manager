@@ -169,6 +169,13 @@ class ABM_Agent_Ops {
 			}
 		}
 
+		// Agent edits and reviewed publication of the same event take turns.
+		if ( 'create' !== $op && 0 !== strpos( $op, 'category_' ) && ! empty( $p['id'] ) && empty( $opts['dry_run'] ) ) {
+			$lock = 'abm_agent_event_lock_' . (int) $p['id'];
+			if ( ! self::take_lock( $lock ) ) {
+				return new WP_Error( 'abm_busy', __( 'This event is already being changed. Try again after it finishes.', 'arkon-bar-manager' ), array( 'status' => 409 ) );
+			}
+		}
 		try {
 			return self::execute( $op, $p, $opts );
 		} finally {
@@ -238,6 +245,11 @@ class ABM_Agent_Ops {
 
 		$dry      = ! empty( $opts['dry_run'] );
 		$approved = ! empty( $opts['approved'] );
+
+		$review = self::check_reviewed_draft( (int) ( $p['id'] ?? 0 ), $opts );
+		if ( is_wp_error( $review ) ) {
+			return $review;
+		}
 
 		$plan = 0 === strpos( $op, 'category_' ) ? self::plan_category( $op, $p ) : self::plan_event( $op, $p );
 		if ( is_wp_error( $plan ) ) {
@@ -309,6 +321,11 @@ class ABM_Agent_Ops {
 			return $result;
 		}
 
+		$review = self::check_reviewed_draft( (int) ( $p['id'] ?? 0 ), $opts );
+		if ( is_wp_error( $review ) ) {
+			return $review;
+		}
+
 		$applied = call_user_func( $plan['apply'] );
 		if ( is_wp_error( $applied ) ) {
 			return $applied;
@@ -323,6 +340,37 @@ class ABM_Agent_Ops {
 		self::log( $op, $post_id, 'applied', $summary, (int) ( $opts['change_id'] ?? 0 ), $gone );
 
 		return $result;
+	}
+
+	/** Fail closed if the expected draft changed before an edit or publication. */
+	private static function check_reviewed_draft( $id, array $opts ) {
+		if ( array_key_exists( 'event_fingerprint', $opts ) ) {
+			$expected = $opts['event_fingerprint'];
+			if ( ! is_string( $expected ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ) {
+				return new WP_Error( 'abm_invalid_fingerprint', __( 'An event fingerprint is required.', 'arkon-bar-manager' ), array( 'status' => 400 ) );
+			}
+			clean_post_cache( $id );
+			if ( 'trash' === get_post_status( $id ) || ! hash_equals( $expected, self::fingerprint( $id ) ) ) {
+				return new WP_Error( 'abm_event_changed', __( 'The event changed. Read it again before editing.', 'arkon-bar-manager' ), array( 'status' => 409 ) );
+			}
+		}
+		$reviewed = array_key_exists( 'reviewed_fingerprint', $opts );
+		if ( ! $reviewed && ! array_key_exists( 'draft_fingerprint', $opts ) ) {
+			return true;
+		}
+		$expected = $reviewed ? $opts['reviewed_fingerprint'] : $opts['draft_fingerprint'];
+		if ( ! is_string( $expected ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ) {
+			return new WP_Error( 'abm_invalid_fingerprint', __( 'A reviewed draft fingerprint is required.', 'arkon-bar-manager' ), array( 'status' => 400 ) );
+		}
+		clean_post_cache( $id );
+		if ( 'draft' !== get_post_status( $id ) || ! hash_equals( $expected, self::fingerprint( $id ) ) ) {
+			return new WP_Error(
+				$reviewed ? 'abm_reviewed_draft_changed' : 'abm_draft_changed',
+				$reviewed ? __( 'The reviewed draft changed. Review it again before publishing.', 'arkon-bar-manager' ) : __( 'The draft changed or is no longer a draft. Read it again before editing.', 'arkon-bar-manager' ),
+				array( 'status' => 409 )
+			);
+		}
+		return true;
 	}
 
 	/**
