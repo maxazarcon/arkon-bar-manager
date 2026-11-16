@@ -37,3 +37,20 @@ wp_clear_scheduled_hook( 'abm_extend_occurrences' );
 $table = $wpdb->prefix . 'abm_occurrences';
 // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 $wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+
+// The agent API's own records: held changes, the activity log, the key that
+// signs preview links, and the role. Events an agent created are events like
+// any other and stay. Accounts that held the role are left in place with no
+// role rather than deleted.
+foreach ( array( 'abm_agent_changes', 'abm_agent_log' ) as $abm_agent_table ) {
+	$abm_agent_table = $wpdb->prefix . $abm_agent_table;
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+	$wpdb->query( "DROP TABLE IF EXISTS {$abm_agent_table}" );
+}
+delete_option( 'abm_agent_schema' );
+delete_option( 'abm_agent_preview_key' );
+// Create locks are removed when the request that took them ends; this clears
+// any left by one that did not.
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'abm\_agent\_lock\_%'" );
+remove_role( 'abm_agent' );

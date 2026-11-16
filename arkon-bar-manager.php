@@ -4,7 +4,7 @@
  * Plugin URI:        https://github.com/maxazarcon/arkon-bar-manager
  * Update URI:        https://github.com/maxazarcon/arkon-bar-manager
  * Description:       Bar event management. Create events with date, time (incl. "Close"), category and flyer, then surface them on the frontend via Themeco Pro/Cornerstone Looper + Dynamic Content, with per-event iCal and Google Calendar export.
- * Version:           3.0.1
+ * Version:           3.1.1
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Max Azarcon
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ABM_VERSION', '3.0.1' );
+define( 'ABM_VERSION', '3.1.1' );
 define( 'ABM_FILE', __FILE__ );
 define( 'ABM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ABM_URL', plugin_dir_url( __FILE__ ) );
@@ -56,6 +56,11 @@ require_once ABM_DIR . 'includes/class-abm-mec-db.php';
 require_once ABM_DIR . 'includes/class-abm-tools.php';
 require_once ABM_DIR . 'includes/class-abm-changelog.php';
 require_once ABM_DIR . 'includes/class-abm-updater.php';
+require_once ABM_DIR . 'includes/class-abm-change-classifier.php';
+require_once ABM_DIR . 'includes/class-abm-agent-store.php';
+require_once ABM_DIR . 'includes/class-abm-agent-ops.php';
+require_once ABM_DIR . 'includes/class-abm-agent-api.php';
+require_once ABM_DIR . 'includes/class-abm-agent-admin.php';
 
 /**
  * Boot the plugin once all plugins are loaded.
@@ -74,6 +79,8 @@ function abm_init_plugin() {
 	ABM_Tools::instance();
 	ABM_Changelog::instance();
 	ABM_Updater::instance();
+	ABM_Agent_API::instance();
+	ABM_Agent_Admin::instance();
 }
 add_action( 'plugins_loaded', 'abm_init_plugin' );
 
@@ -102,6 +109,9 @@ function abm_maybe_upgrade() {
 	// abm_event_date. Routine plugin updates have taken a finished migration from
 	// hundreds of dates down to one per event in exactly that way.
 	ABM_Occurrences::generate_missing();
+	// Storage and the role for the agent API. Neither touches an event.
+	ABM_Agent_Store::install_tables();
+	ABM_Agent_API::install_role();
 	update_option( 'abm_db_version', ABM_VERSION );
 }
 add_action( 'admin_init', 'abm_maybe_upgrade' );
@@ -122,6 +132,8 @@ function abm_activate() {
 	// gaps instead of flattening imported dates.
 	ABM_Occurrences::generate_missing();
 	ABM_Occurrences::schedule_cron();
+	ABM_Agent_Store::install_tables();
+	ABM_Agent_API::install_role();
 	flush_rewrite_rules();
 	update_option( 'abm_db_version', ABM_VERSION );
 }
