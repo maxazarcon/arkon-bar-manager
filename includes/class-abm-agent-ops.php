@@ -164,14 +164,7 @@ class ABM_Agent_Ops {
 		$lock = '';
 		if ( 'create' === $op && empty( $opts['dry_run'] ) ) {
 			$lock = 'abm_agent_lock_' . md5( ABM_Change_Classifier::normalize_title( (string) ( $p['title'] ?? '' ) ) . '|' . (string) ( $p['date'] ?? '' ) );
-			$held = (int) get_option( $lock, 0 );
-			if ( $held && time() - $held < 60 ) {
-				return new WP_Error( 'abm_busy', __( 'This event is already being created. Check for it before trying again.', 'arkon-bar-manager' ), array( 'status' => 409 ) );
-			}
-			if ( $held ) {
-				delete_option( $lock ); // Left behind by a request that died.
-			}
-			if ( ! add_option( $lock, time(), '', false ) ) {
+			if ( ! self::take_lock( $lock ) ) {
 				return new WP_Error( 'abm_busy', __( 'This event is already being created. Check for it before trying again.', 'arkon-bar-manager' ), array( 'status' => 409 ) );
 			}
 		}
@@ -180,9 +173,56 @@ class ABM_Agent_Ops {
 			return self::execute( $op, $p, $opts );
 		} finally {
 			if ( '' !== $lock ) {
-				delete_option( $lock );
+				self::drop_lock( $lock );
 			}
 		}
+	}
+
+	/**
+	 * Take a short-lived lock, or report that someone else holds it.
+	 *
+	 * Written straight to the options table rather than through add_option().
+	 * The options API answers from the object cache first, and a persistent
+	 * cache that has fallen out of step with the database (found on staging
+	 * after an unclean restart) reported a lock that no longer existed, which
+	 * refused every create of that show. The insert is also the test: the
+	 * table's unique key lets exactly one request in.
+	 *
+	 * @param string $name Lock name.
+	 * @return bool
+	 */
+	private static function take_lock( $name ) {
+		global $wpdb;
+
+		for ( $attempt = 0; $attempt < 2; $attempt++ ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$got = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')", $name, (string) time() ) );
+			if ( $got ) {
+				return true;
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$held = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $name ) );
+			if ( null === $held || time() - (int) $held < 60 ) {
+				return false;
+			}
+
+			// Left behind by a request that died. Remove that exact lock, so two
+			// requests clearing it cannot remove each other's fresh one.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s", $name, $held ) );
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param string $name Lock name.
+	 */
+	private static function drop_lock( $name ) {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s", $name ) );
 	}
 
 	/**
@@ -432,6 +472,7 @@ class ABM_Agent_Ops {
 			'today'                  => $today,
 			'recent_removed'         => 0,
 			'locked'                 => $locked,
+			'series'                 => $locked || '' !== $cur['rule']['type'],
 			'dates_meta_changed'     => false,
 			'rule_changed'           => false,
 			'time_changed'           => false,

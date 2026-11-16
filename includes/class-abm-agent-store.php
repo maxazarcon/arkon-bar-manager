@@ -20,6 +20,9 @@ class ABM_Agent_Store {
 	/** A pending change nobody decided on stops being offered after this long. */
 	const EXPIRE_DAYS = 7;
 
+	/** An approval still being applied after this long is taken to have died. */
+	const CLAIM_MINUTES = 5;
+
 	/**
 	 * "approving" is a claim: one request has taken the change and is applying
 	 * it. It exists so two approvals arriving together cannot both apply.
@@ -214,6 +217,29 @@ class ABM_Agent_Store {
 		global $wpdb;
 		$table  = self::changes_table();
 		$cutoff = gmdate( 'Y-m-d H:i:s', time() - self::EXPIRE_DAYS * DAY_IN_SECONDS );
+
+		// A claim that was never finished: the request applying it died part
+		// way. Such a row is in no queue and would otherwise vanish without a
+		// word, possibly half applied. Close it and say so in the log, where
+		// the approval screen shows it.
+		$stuck_before = gmdate( 'Y-m-d H:i:s', time() - self::CLAIM_MINUTES * MINUTE_IN_SECONDS );
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$stuck = (array) $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE status = 'approving' AND decided_gmt < %s", $stuck_before ), ARRAY_A );
+		foreach ( $stuck as $row ) {
+			if ( self::set_change_status( (int) $row['id'], 'stale', 0, 'approving' ) ) {
+				$summary = json_decode( (string) $row['summary'], true );
+				self::log(
+					array(
+						'user_id'   => (int) $row['decided_by'],
+						'op'        => (string) $row['op'],
+						'post_id'   => (int) $row['post_id'],
+						'outcome'   => 'interrupted',
+						'summary'   => is_array( $summary ) ? $summary : array(),
+						'change_id' => (int) $row['id'],
+					)
+				);
+			}
+		}
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return (int) $wpdb->query( $wpdb->prepare( "UPDATE {$table} SET status = 'expired', decided_gmt = %s WHERE status = 'pending' AND created_gmt < %s", current_time( 'mysql', true ), $cutoff ) );

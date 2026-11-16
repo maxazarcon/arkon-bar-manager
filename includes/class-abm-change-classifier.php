@@ -160,7 +160,10 @@ class ABM_Change_Classifier {
 		// taken off a series -- a skip, or an edit that drops one date -- so the
 		// per-change limit above cannot be walked around in single steps. A
 		// one-off being moved is not a series losing nights.
-		if ( count( $before_dates ) > 1 && $upcoming && in_array( $op, array( 'skip', 'update' ), true )
+		// A series is told by its rule, not by how many dates it has left: one
+		// skipped down to its last night is still a series losing a night.
+		$is_series = ! empty( $ctx['series'] ) || count( $before_dates ) > 1;
+		if ( $is_series && $upcoming && in_array( $op, array( 'skip', 'update' ), true )
 			&& (int) ( $ctx['recent_removed'] ?? 0 ) + count( $upcoming ) > self::MAX_SKIPS_IN_WINDOW ) {
 			$result = self::hold( $result, 'Several dates have already been taken off this event recently.' );
 		}

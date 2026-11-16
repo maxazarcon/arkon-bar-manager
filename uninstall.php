@@ -49,4 +49,8 @@ foreach ( array( 'abm_agent_changes', 'abm_agent_log' ) as $abm_agent_table ) {
 }
 delete_option( 'abm_agent_schema' );
 delete_option( 'abm_agent_preview_key' );
+// Create locks are removed when the request that took them ends; this clears
+// any left by one that did not.
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'abm\_agent\_lock\_%'" );
 remove_role( 'abm_agent' );

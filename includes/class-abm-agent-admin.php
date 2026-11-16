@@ -250,6 +250,7 @@ class ABM_Agent_Admin {
 			'refused'           => __( 'Refused', 'arkon-bar-manager' ),
 			'rejected'          => __( 'Rejected', 'arkon-bar-manager' ),
 			'stale'             => __( 'Not applied: the event had changed', 'arkon-bar-manager' ),
+			'interrupted'       => __( 'Interrupted while being applied. Check the event.', 'arkon-bar-manager' ),
 		);
 		return isset( $labels[ $outcome ] ) ? $labels[ $outcome ] : (string) $outcome;
 	}
